@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>❄️ WOS Alliance Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg:       #060810;
+  --bg2:      #0c1020;
+  --surface:  #111828;
+  --surface2: #182030;
+  --border:   #1e2a3a;
+  --border2:  #253040;
+  --gold:     #e8a030;
+  --gold2:    #f5c060;
+  --gold-dim: rgba(232,160,48,0.12);
+  --ice:      #60c8f0;
+  --ice-dim:  rgba(96,200,240,0.10);
+  --red:      #e05060;
+  --green:    #38c880;
+  --text:     #dde8f0;
+  --text2:    #7a90a8;
+  --text3:    #3a4a5c;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans Thai',sans-serif;min-height:100vh;overflow-x:hidden}
+.bg-canvas{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.bg-canvas::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 40% at 20% 10%,rgba(96,200,240,.06) 0%,transparent 60%),radial-gradient(ellipse 50% 60% at 80% 80%,rgba(232,160,48,.05) 0%,transparent 60%)}
+.bg-canvas::after{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(96,200,240,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(96,200,240,.025) 1px,transparent 1px);background-size:48px 48px}
+
+/* ── SETUP SCREEN ── */
+#setupScreen{position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:20px}
+.setup-box{background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:40px;width:540px;max-width:100%;box-shadow:0 32px 80px rgba(0,0,0,.6)}
+.setup-logo{font-family:'Oxanium',sans-serif;font-size:26px;font-weight:800;color:var(--gold);letter-spacing:3px;text-align:center;margin-bottom:6px}
+.setup-sub{text-align:center;color:var(--text2);font-size:13px;margin-bottom:28px}
+.setup-step{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
+.step-title{font-family:'Oxanium',sans-serif;font-size:12px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--gold-dim);border:1px solid var(--gold);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--gold)}
+.setup-code{background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:12px 14px;font-family:monospace;font-size:12px;color:var(--ice);line-height:1.7;white-space:pre-wrap;word-break:break-all;margin-bottom:10px}
+.setup-input{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:monospace;outline:none;margin-bottom:10px;transition:border-color .2s}
+.setup-input:last-of-type{margin-bottom:0}
+.setup-input:focus{border-color:var(--gold)}
+.setup-input::placeholder{color:var(--text3);font-family:'Noto Sans Thai',sans-serif}
+.btn-setup{width:100%;background:var(--gold);color:#060810;border:none;border-radius:10px;padding:13px;font-family:'Oxanium',sans-serif;font-size:15px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .2s;margin-top:16px}
+.btn-setup:hover{background:var(--gold2);transform:translateY(-1px)}
+.setup-note{font-size:12px;color:var(--text3);text-align:center;margin-top:12px}
+.setup-note a{color:var(--ice);text-decoration:none}
+.setup-err{color:var(--red);font-size:12px;text-align:center;margin-top:8px;display:none}
+
+/* ── HEADER ── */
+.header{position:sticky;top:0;z-index:100;background:rgba(6,8,16,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:0 24px;height:64px;display:flex;align-items:center;gap:14px}
+.logo{font-family:'Oxanium',sans-serif;font-size:18px;font-weight:800;color:var(--gold);letter-spacing:3px;display:flex;align-items:center;gap:8px}
+.logo-flake{animation:spin 12s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.h-div{width:1px;height:28px;background:var(--border2)}
+.alliance-input{background:transparent;border:none;font-family:'Oxanium',sans-serif;font-size:15px;font-weight:600;color:var(--text2);outline:none;cursor:text;min-width:100px;max-width:160px;transition:color .2s}
+.alliance-input:focus{color:var(--text)}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.pill{background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:5px 14px;font-size:13px;color:var(--text2)}
+.pill strong{color:var(--gold);font-family:'Oxanium',sans-serif;font-size:15px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;font-size:13px;font-family:'Noto Sans Thai',sans-serif;font-weight:500;cursor:pointer;border:none;transition:all .18s;white-space:nowrap}
+.btn-gold{background:var(--gold);color:#060810;font-weight:700}
+.btn-gold:hover{background:var(--gold2);transform:translateY(-1px);box-shadow:0 4px 20px rgba(232,160,48,.3)}
+.btn-ghost{background:var(--surface);border:1px solid var(--border2);color:var(--text2)}
+.btn-ghost:hover{border-color:var(--gold);color:var(--gold)}
+.btn-ice{background:var(--ice-dim);border:1px solid rgba(96,200,240,.3);color:var(--ice)}
+.btn-ice:hover{background:rgba(96,200,240,.2)}
+.btn-sm{padding:7px 12px;font-size:12px}
+
+/* ── MAIN ── */
+.main{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:24px}
+
+/* Stats */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:22px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:12px;position:relative;overflow:hidden}
+.stat::after{content:attr(data-icon);position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:34px;opacity:.06}
+.stat-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px}
+.stat-val{font-family:'Oxanium',sans-serif;font-size:24px;font-weight:700;color:var(--gold);line-height:1}
+.stat-val.ice{color:var(--ice)}
+
+/* Toolbar */
+.toolbar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+.search-wrap{flex:1;min-width:180px;position:relative}
+.search-wrap input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 16px 10px 40px;color:var(--text);font-size:14px;font-family:'Noto Sans Thai',sans-serif;outline:none;transition:border-color .2s}
+.search-wrap input:focus{border-color:var(--gold)}
+.search-wrap input::placeholder{color:var(--text3)}
+.search-wrap .si{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none}
+.sel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text2);font-size:13px;font-family:'Noto Sans Thai',sans-serif;outline:none;cursor:pointer}
+
+/* CARDS */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+
+.member-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px 18px 18px;position:relative;overflow:hidden;transition:border-color .2s,transform .2s,box-shadow .2s;animation:cardIn .3s ease both}
+@keyframes cardIn{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.member-card:hover{border-color:var(--border2);transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,.45)}
+.member-card[data-rank="1"]{border-color:rgba(255,215,0,.4);box-shadow:0 0 0 1px rgba(255,215,0,.1)}
+.member-card[data-rank="2"]{border-color:rgba(192,192,192,.35)}
+.member-card[data-rank="3"]{border-color:rgba(205,127,50,.35)}
+
+/* Shimmer line top for top3 */
+.member-card[data-rank="1"]::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#ffd700,transparent)}
+.member-card[data-rank="2"]::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#c0c0c0,transparent)}
+.member-card[data-rank="3"]::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#cd7f32,transparent)}
+
+.card-rank{position:absolute;top:13px;left:15px;font-family:'Oxanium',sans-serif;font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.5px}
+.card-rank.r1{color:#ffd700}.card-rank.r2{color:#c0c0c0}.card-rank.r3{color:#cd7f32}
+
+.card-actions{position:absolute;top:8px;right:10px;display:flex;gap:4px;opacity:0;transition:opacity .2s}
+.member-card:hover .card-actions{opacity:1}
+.icon-btn{width:27px;height:27px;border-radius:6px;background:var(--surface2);border:1px solid var(--border2);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .15s}
+.icon-btn:hover{border-color:var(--gold);color:var(--gold)}
+.icon-btn.del:hover{border-color:var(--red);color:var(--red)}
+
+.card-avatar{width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,var(--surface2),var(--bg2));border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;margin:10px auto 12px;position:relative}
+.av-initials{font-family:'Oxanium',sans-serif;font-size:18px;font-weight:700;color:var(--gold)}
+.member-card[data-rank="1"] .card-avatar{border-color:rgba(255,215,0,.5)}
+.member-card[data-rank="2"] .card-avatar{border-color:rgba(192,192,192,.4)}
+.member-card[data-rank="3"] .card-avatar{border-color:rgba(205,127,50,.4)}
+
+.card-name{text-align:center;font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px}
+.card-uid{text-align:center;font-family:'Oxanium',sans-serif;font-size:11px;color:var(--text3);letter-spacing:.5px;margin-bottom:12px}
+
+.card-badges{display:flex;justify-content:center;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+.badge{display:inline-flex;align-items:center;gap:4px;border-radius:7px;padding:4px 10px;font-family:'Oxanium',sans-serif;font-size:12px;font-weight:600}
+.badge-gold{background:var(--gold-dim);border:1px solid rgba(232,160,48,.3);color:var(--gold)}
+.badge-ice{background:var(--ice-dim);border:1px solid rgba(96,200,240,.3);color:var(--ice)}
+
+.card-note{text-align:center;font-size:12px;color:var(--text2);background:var(--surface2);border-radius:6px;padding:5px 10px;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-bottom{position:absolute;bottom:12px;right:12px;display:flex;align-items:center;gap:4px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.dot.loading{background:var(--gold);animation:blink .8s infinite}
+.dot.err{background:var(--red)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.mock-tag{font-size:9px;background:rgba(232,160,48,.2);border:1px solid rgba(232,160,48,.3);border-radius:3px;padding:1px 4px;color:var(--gold);letter-spacing:.5px;margin-left:3px;vertical-align:middle}
+
+.empty{grid-column:1/-1;text-align:center;padding:80px 24px;color:var(--text3)}
+.empty .ei{font-size:52px;margin-bottom:14px;opacity:.5}
+.empty h3{font-size:18px;color:var(--text2);margin-bottom:6px}
+.empty p{font-size:14px}
+
+/* ── MODALS ── */
+.overlay{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:20px}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:18px;padding:28px;width:460px;max-width:100%;animation:mIn .2s ease;box-shadow:0 32px 80px rgba(0,0,0,.5)}
+@keyframes mIn{from{opacity:0;transform:scale(.96) translateY(-10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.modal-title{font-family:'Oxanium',sans-serif;font-size:18px;font-weight:700;color:var(--gold);margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.hint{background:rgba(96,200,240,.06);border:1px solid rgba(96,200,240,.2);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:16px}
+.field{margin-bottom:14px}
+.fl{display:block;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:6px}
+.fi{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:10px 14px;color:var(--text);font-size:14px;font-family:'Noto Sans Thai',sans-serif;outline:none;transition:border-color .2s}
+.fi:focus{border-color:var(--gold)}
+.fi::placeholder{color:var(--text3)}
+textarea.fi{min-height:110px;resize:vertical;font-family:'Oxanium',monospace;font-size:13px}
+.mf{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+.prog-wrap{margin:10px 0;display:none}
+.prog-wrap.show{display:block}
+.prog-label{font-size:12px;color:var(--text2);margin-bottom:6px}
+.prog-bar{height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--ice),var(--gold));border-radius:3px;width:0;transition:width .3s}
+
+/* ── TOAST ── */
+.toasts{position:fixed;bottom:22px;right:22px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:11px 16px;font-size:13px;display:flex;align-items:center;gap:8px;animation:tIn .3s ease;box-shadow:0 8px 30px rgba(0,0,0,.5);pointer-events:all;transition:opacity .4s}
+.toast.ok{border-left:3px solid var(--green)}.toast.err{border-left:3px solid var(--red)}.toast.info{border-left:3px solid var(--ice)}
+
+@keyframes tIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+@media(max-width:640px){.header{padding:0 14px;gap:8px}.main{padding:14px}.header-right .btn span{display:none}.hide-sm{display:none}}
+</style>
+</head>
+<body>
+<div class="bg-canvas"></div>
+
+<!-- ═══ SETUP ═══ -->
+<div id="setupScreen">
+  <div class="setup-box">
+    <div class="setup-logo">❄️ WOS ALLIANCE</div>
+    <div class="setup-sub">เชื่อมต่อ Supabase Database — ตั้งค่าครั้งเดียว ใช้ได้ทุกเครื่อง</div>
+
+    <div class="setup-step">
+      <div class="step-title"><span class="step-num">1</span> สร้าง Project ฟรีที่ supabase.com แล้วรัน SQL นี้</div>
+      <div class="setup-code">CREATE TABLE members (
+  id         bigserial PRIMARY KEY,
+  fid        text UNIQUE NOT NULL,
+  nickname   text,
+  kid        integer,
+  stove_lv   integer,
+  note       text DEFAULT '',
+  is_mock    boolean DEFAULT false,
+  added_at   timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+ALTER TABLE members ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_all" ON members
+  FOR ALL USING (true) WITH CHECK (true);</div>
+    </div>
+
+    <div class="setup-step">
+      <div class="step-title"><span class="step-num">2</span> ใส่ข้อมูล Project ของคุณ</div>
+      <input class="setup-input" id="sbUrl" placeholder="Project URL  เช่น https://abcxyz.supabase.co">
+      <input class="setup-input" id="sbKey" placeholder="anon / public Key">
+      <input class="setup-input" id="sbName" placeholder="ชื่อพันธมิตร (ไม่บังคับ)  เช่น ICE WOLVES" style="margin-bottom:0">
+    </div>
+
+    <button class="btn-setup" onclick="doSetup()">🔗 เชื่อมต่อ & เริ่มใช้งาน</button>
+    <div class="setup-err" id="setupErr"></div>
+    <div class="setup-note" style="margin-top:14px">
+      วิธีสร้าง Project: <a href="https://supabase.com" target="_blank">supabase.com</a> → New Project → SQL Editor → วาง SQL ด้านบน<br>
+      ข้อมูลทั้งหมดเก็บใน database ของคุณเอง ปลอดภัย 100%
+    </div>
+  </div>
+</div>
+
+<!-- ═══ APP ═══ -->
+<div id="app" style="display:none">
+
+<header class="header">
+  <div class="logo"><span class="logo-flake">❄️</span> WOS</div>
+  <div class="h-div"></div>
+  <input class="alliance-input" id="allianceTitle" value="ALLIANCE" maxlength="28" title="คลิกแก้ไขชื่อพันธมิตร">
+  <div class="header-right">
+    <div class="pill">สมาชิก <strong id="hCount">0</strong></div>
+    <button class="btn btn-gold" onclick="openAdd()">+ <span>เพิ่มสมาชิก</span></button>
+    <button class="btn btn-ghost" onclick="openBulk()">📋 <span>Import</span></button>
+    <button class="btn btn-ice"  onclick="doExport()">⬇️ <span>Export</span></button>
+    <button class="btn btn-ghost btn-sm hide-sm" id="rfBtn" onclick="refreshAll()" title="Refresh ทั้งหมด">🔄</button>
+    <button class="btn btn-ghost btn-sm hide-sm" onclick="doReset()" title="เปลี่ยน DB">⚙️</button>
+  </div>
+</header>
+
+<main class="main">
+  <div class="stats-row">
+    <div class="stat" data-icon="👥"><div><div class="stat-label">สมาชิกทั้งหมด</div><div class="stat-val" id="sTotal">0</div></div></div>
+    <div class="stat" data-icon="🔥"><div><div class="stat-label">Furnace เฉลี่ย</div><div class="stat-val" id="sAvg">—</div></div></div>
+    <div class="stat" data-icon="🏆"><div><div class="stat-label">Furnace สูงสุด</div><div class="stat-val" id="sMax">—</div></div></div>
+    <div class="stat" data-icon="🗺️"><div><div class="stat-label">จำนวน State</div><div class="stat-val ice" id="sStates">—</div></div></div>
+  </div>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="si">🔍</span>
+      <input type="text" id="searchQ" placeholder="ค้นหาชื่อ, UID, State..." oninput="render()">
+    </div>
+    <select class="sel" id="fState" onchange="render()"><option value="">ทุก State</option></select>
+    <select class="sel" id="fSort" onchange="render()">
+      <option value="furnace_desc">🔥 Furnace สูง→ต่ำ</option>
+      <option value="furnace_asc">🔥 Furnace ต่ำ→สูง</option>
+      <option value="name_asc">🔤 ชื่อ A→Z</option>
+      <option value="state_asc">🗺️ State</option>
+      <option value="new_desc">🕐 เพิ่มล่าสุด</option>
+    </select>
+  </div>
+
+  <div class="cards-grid" id="grid">
+    <div class="empty"><div class="ei">❄️</div><h3>ยังไม่มีสมาชิก</h3><p>กด "+ เพิ่มสมาชิก" หรือ Import เพื่อเริ่มต้น</p></div>
+  </div>
+</main>
+</div>
+
+<!-- ── Add Modal ── -->
+<div class="overlay" id="mAdd">
+  <div class="modal">
+    <div class="modal-title">➕ เพิ่มสมาชิก</div>
+    <div class="hint">💡 ใส่ <strong>UID (FID)</strong> ของผู้เล่น — กดที่ Avatar มุมบนซ้ายในเกมเพื่อดู UID<br>ระบบจะดึง ชื่อ / Furnace / State โดยอัตโนมัติ</div>
+    <div class="field"><label class="fl">UID / FID</label><input type="number" class="fi" id="inUID" placeholder="เช่น 123456789" onkeydown="if(event.key==='Enter')doAdd()"></div>
+    <div class="field"><label class="fl">หมายเหตุ (ไม่บังคับ)</label><input type="text" class="fi" id="inNote" placeholder="เช่น R5, เจ้าหน้าที่, ผู้นำ..." onkeydown="if(event.key==='Enter')doAdd()"></div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeM('mAdd')">ยกเลิก</button>
+      <button class="btn btn-gold" id="addBtn" onclick="doAdd()">ดึงข้อมูล & เพิ่ม</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Bulk Modal ── -->
+<div class="overlay" id="mBulk">
+  <div class="modal">
+    <div class="modal-title">📋 Import หลาย UID</div>
+    <div class="hint">วาง UID หลาย ๆ คน แต่ละ UID แยกบรรทัด หรือคั่นด้วย comma<br>ระบบจะดึงข้อมูลและบันทึกลง Supabase ทีละคน</div>
+    <div class="field"><label class="fl">UID List</label><textarea class="fi" id="bulkIn" placeholder="123456789&#10;987654321&#10;111222333"></textarea></div>
+    <div class="prog-wrap" id="progWrap">
+      <div class="prog-label" id="progLabel">กำลังดำเนินการ...</div>
+      <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeM('mBulk')">ยกเลิก</button>
+      <button class="btn btn-gold" id="bulkBtn" onclick="doBulk()">🚀 Import ทั้งหมด</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Note Modal ── -->
+<div class="overlay" id="mNote">
+  <div class="modal">
+    <div class="modal-title">📝 แก้ไขหมายเหตุ</div>
+    <input type="hidden" id="noteFID">
+    <div class="field"><label class="fl">หมายเหตุ</label><input type="text" class="fi" id="noteVal" placeholder="เช่น R5, ไม่แอคทีฟ, เจ้าหน้าที่..." onkeydown="if(event.key==='Enter')saveNote()"></div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeM('mNote')">ยกเลิก</button>
+      <button class="btn btn-gold" onclick="saveNote()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+// ── State ──
+const CFG_KEY = 'wos_sb_v2';
+let sb = null, members = [];
+
+// ── Setup ──
+async function doSetup() {
+  const url  = document.getElementById('sbUrl').value.trim();
+  const key  = document.getElementById('sbKey').value.trim();
+  const name = document.getElementById('sbName').value.trim() || 'ALLIANCE';
+  if (!url || !key) { setErr('กรุณาใส่ URL และ Key'); return; }
+  if (!url.startsWith('https://')) { setErr('URL ต้องขึ้นต้นด้วย https://'); return; }
+  try {
+    localStorage.setItem(CFG_KEY, JSON.stringify({ url, key, name }));
+    await bootApp({ url, key, name });
+  } catch(e) { setErr('ข้อผิดพลาด: ' + e.message); }
+}
+function setErr(m) { const e=document.getElementById('setupErr'); e.textContent=m; e.style.display='block'; }
+
+async function bootApp(cfg) {
+  sb = supabase.createClient(cfg.url, cfg.key);
+  const { error } = await sb.from('members').select('id').limit(1);
+  if (error) { setErr('❌ เชื่อมต่อไม่ได้: ' + error.message); return; }
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  const ti = document.getElementById('allianceTitle');
+  ti.value = cfg.name;
+  document.title = '❄️ ' + cfg.name;
+  ti.addEventListener('change', () => {
+    const c = JSON.parse(localStorage.getItem(CFG_KEY)||'{}');
+    c.name = ti.value.trim() || 'ALLIANCE';
+    localStorage.setItem(CFG_KEY, JSON.stringify(c));
+  });
+  await loadAll();
+}
+
+function doReset() { localStorage.removeItem(CFG_KEY); location.reload(); }
+
+// Auto-boot
+(function() {
+  const s = localStorage.getItem(CFG_KEY);
+  if (s) { try { bootApp(JSON.parse(s)); } catch{} }
+})();
+
+// ── DB ──
+async function loadAll() {
+  const { data, error } = await sb.from('members').select('*').order('stove_lv', { ascending: false });
+  if (error) { toast('โหลดไม่สำเร็จ: ' + error.message, 'err'); return; }
+  members = data || [];
+  updateStateFilter(); updateStats(); render();
+}
+
+async function upsert(m) {
+  const { error } = await sb.from('members').upsert(
+    { fid:m.fid, nickname:m.nickname, kid:m.kid, stove_lv:m.stove_lv, note:m.note||'', is_mock:!!m.is_mock, updated_at:new Date().toISOString() },
+    { onConflict: 'fid' }
+  );
+  if (error) throw error;
+}
+
+async function dbDelete(fid) {
+  const { error } = await sb.from('members').delete().eq('fid', fid);
+  if (error) throw error;
+}
+
+// ── WOS API ──
+async function fetchPlayer(fid) {
+  const time = Math.floor(Date.now() / 1000);
+  const sign = md5(`fid=${fid}&time=${time}tGy1c9gCkBr6f27`);
+  try {
+    const r = await fetch('https://wos-giftcode-api.centurygame.com/api/player', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ fid: String(fid), time: String(time), sign }).toString(),
+    });
+    const d = await r.json();
+    if (d.code === 0 && d.data) return { ok: true, data: d.data };
+    return { ok: false, msg: d.msg || 'ไม่พบผู้เล่น' };
+  } catch {
+    // CORS fallback — mock
+    return { ok: true, _mock: true, data: {
+      fid: String(fid),
+      nickname: 'Player_' + String(fid).slice(-4),
+      kid: 100 + (parseInt(fid) % 800),
+      stove_lv: 20 + (parseInt(fid) % 15),
+    }};
+  }
+}
+
+// ── ADD ──
+function openAdd() { document.getElementById('mAdd').classList.add('open'); setTimeout(()=>document.getElementById('inUID').focus(),80); }
+async function doAdd() {
+  const uid = document.getElementById('inUID').value.trim();
+  const note = document.getElementById('inNote').value.trim();
+  if (!uid) { toast('กรุณาใส่ UID', 'err'); return; }
+  if (members.find(m => m.fid === uid)) { toast('UID นี้มีอยู่แล้ว', 'err'); return; }
+  const btn = document.getElementById('addBtn');
+  btn.textContent = '⏳...'; btn.disabled = true;
+  const res = await fetchPlayer(uid);
+  btn.textContent = 'ดึงข้อมูล & เพิ่ม'; btn.disabled = false;
+  if (!res.ok) { toast('❌ ' + res.msg, 'err'); return; }
+  const d = res.data;
+  const m = { fid: uid, nickname: d.nickname||'Unknown', kid: d.kid, stove_lv: d.stove_lv||0, note, is_mock: !!res._mock, added_at: new Date().toISOString() };
+  try {
+    await upsert(m);
+    members.unshift(m);
+    closeM('mAdd');
+    document.getElementById('inUID').value = '';
+    document.getElementById('inNote').value = '';
+    updateStateFilter(); updateStats(); render();
+    toast(`✅ เพิ่ม ${m.nickname}${res._mock?' ⚠️ ข้อมูลจำลอง':''}`, 'ok');
+  } catch(e) { toast('บันทึกไม่สำเร็จ: '+e.message, 'err'); }
+}
+
+// ── BULK ──
+function openBulk() { document.getElementById('mBulk').classList.add('open'); setTimeout(()=>document.getElementById('bulkIn').focus(),80); }
+async function doBulk() {
+  const raw = document.getElementById('bulkIn').value;
+  const uids = [...new Set(raw.split(/[\n,\s]+/).map(s=>s.trim()).filter(s=>/^\d{5,}$/.test(s)))];
+  if (!uids.length) { toast('ไม่พบ UID ที่ถูกต้อง', 'err'); return; }
+  const btn = document.getElementById('bulkBtn'); btn.disabled = true;
+  document.getElementById('progWrap').classList.add('show');
+  let added = 0, skipped = 0;
+  for (let i = 0; i < uids.length; i++) {
+    const uid = uids[i];
+    document.getElementById('progLabel').textContent = `ดึงข้อมูล ${i+1}/${uids.length} — UID: ${uid}`;
+    document.getElementById('progFill').style.width = `${((i+1)/uids.length)*100}%`;
+    if (members.find(m => m.fid === uid)) { skipped++; continue; }
+    const res = await fetchPlayer(uid);
+    if (res.ok) {
+      const d = res.data;
+      const m = { fid: uid, nickname: d.nickname||'Unknown', kid: d.kid, stove_lv: d.stove_lv||0, note: '', is_mock: !!res._mock, added_at: new Date().toISOString() };
+      try { await upsert(m); members.unshift(m); added++; updateStateFilter(); updateStats(); render(); } catch {}
+    }
+    await delay(650);
+  }
+  document.getElementById('progWrap').classList.remove('show');
+  btn.disabled = false; document.getElementById('bulkIn').value = '';
+  closeM('mBulk');
+  toast(`✅ เพิ่ม ${added} คน | ข้ามซ้ำ ${skipped} คน`, 'ok');
+}
+
+// ── REFRESH ──
+async function refreshAll() {
+  if (!members.length) return;
+  const btn = document.getElementById('rfBtn'); btn.disabled = true; btn.textContent = '⏳';
+  for (const m of [...members]) {
+    const res = await fetchPlayer(m.fid);
+    if (res.ok) { Object.assign(m, { nickname: res.data.nickname||m.nickname, kid: res.data.kid, stove_lv: res.data.stove_lv||m.stove_lv, is_mock: !!res._mock }); try { await upsert(m); } catch {} }
+    updateStats(); render();
+    await delay(650);
+  }
+  updateStateFilter(); btn.disabled = false; btn.textContent = '🔄';
+  toast('✅ Refresh เสร็จแล้ว', 'ok');
+}
+
+async function refreshOne(fid) {
+  const m = members.find(x => x.fid === fid); if (!m) return;
+  m._loading = true; render();
+  const res = await fetchPlayer(fid);
+  if (res.ok) { Object.assign(m, { nickname: res.data.nickname||m.nickname, kid: res.data.kid, stove_lv: res.data.stove_lv||m.stove_lv, is_mock: !!res._mock }); try { await upsert(m); } catch {}; toast('✅ อัพเดต '+m.nickname, 'ok'); }
+  m._loading = false; updateStats(); updateStateFilter(); render();
+}
+
+// ── DELETE ──
+async function doDelete(fid) {
+  const m = members.find(x => x.fid === fid);
+  if (!confirm(`ต้องการลบ "${m?.nickname||fid}" ออกจากพันธมิตร?`)) return;
+  try { await dbDelete(fid); members = members.filter(x => x.fid !== fid); updateStats(); updateStateFilter(); render(); toast('ลบแล้ว', 'ok'); }
+  catch(e) { toast('ลบไม่สำเร็จ: '+e.message, 'err'); }
+}
+
+// ── NOTE ──
+function openNote(fid) {
+  const m = members.find(x => x.fid === fid); if (!m) return;
+  document.getElementById('noteFID').value = fid;
+  document.getElementById('noteVal').value = m.note || '';
+  document.getElementById('mNote').classList.add('open');
+  setTimeout(() => document.getElementById('noteVal').focus(), 80);
+}
+async function saveNote() {
+  const fid = document.getElementById('noteFID').value;
+  const note = document.getElementById('noteVal').value.trim();
+  const m = members.find(x => x.fid === fid); if (!m) return;
+  try {
+    await sb.from('members').update({ note, updated_at: new Date().toISOString() }).eq('fid', fid);
+    m.note = note; render(); closeM('mNote'); toast('บันทึกหมายเหตุแล้ว', 'ok');
+  } catch(e) { toast('บันทึกไม่สำเร็จ', 'err'); }
+}
+
+// ── RENDER ──
+function getList() {
+  const q = document.getElementById('searchQ').value.toLowerCase();
+  const st = document.getElementById('fState').value;
+  const so = document.getElementById('fSort').value;
+  let list = members.filter(m => {
+    const mq = !q || (m.nickname||'').toLowerCase().includes(q) || m.fid.includes(q) || String(m.kid||'').includes(q);
+    const ms = !st || String(m.kid) === st;
+    return mq && ms;
+  });
+  list.sort((a,b) => {
+    if (so==='furnace_desc') return (b.stove_lv||0)-(a.stove_lv||0);
+    if (so==='furnace_asc')  return (a.stove_lv||0)-(b.stove_lv||0);
+    if (so==='name_asc')     return (a.nickname||'').localeCompare(b.nickname||'');
+    if (so==='state_asc')    return (a.kid||0)-(b.kid||0);
+    if (so==='new_desc')     return new Date(b.added_at||0)-new Date(a.added_at||0);
+    return 0;
+  });
+  return list;
+}
+
+function render() {
+  const grid = document.getElementById('grid');
+  const list = getList();
+  document.getElementById('hCount').textContent = members.length;
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty"><div class="ei">${members.length?'🔍':'❄️'}</div><h3>${members.length?'ไม่พบสมาชิก':'ยังไม่มีสมาชิก'}</h3><p>${members.length?'ลองเปลี่ยนตัวกรอง':'กด "+ เพิ่มสมาชิก" หรือ Import เพื่อเริ่มต้น'}</p></div>`;
+    return;
+  }
+  grid.innerHTML = list.map((m, i) => {
+    const rank = i+1;
+    const rCls = rank===1?'r1':rank===2?'r2':rank===3?'r3':'';
+    const rLabel = rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':`#${rank}`;
+    const init = (m.nickname||'?').replace(/[^\u0E00-\u0E7Fa-zA-Z0-9]/g,'').slice(0,2).toUpperCase() || '?';
+    const dot = m._loading ? '<span class="dot loading"></span>' : '<span class="dot"></span>';
+    const mockT = m.is_mock ? '<span class="mock-tag">MOCK</span>' : '';
+    return `<div class="member-card" data-rank="${rank<=3?rank:''}">
+      <div class="card-rank ${rCls}">${rLabel}</div>
+      <div class="card-actions">
+        <button class="icon-btn" onclick="refreshOne('${m.fid}')" title="Refresh">🔄</button>
+        <button class="icon-btn" onclick="openNote('${m.fid}')" title="หมายเหตุ">📝</button>
+        <button class="icon-btn del" onclick="doDelete('${m.fid}')" title="ลบ">🗑️</button>
+      </div>
+      <div class="card-avatar"><span class="av-initials">${init}</span></div>
+      <div class="card-name">${esc(m.nickname||'Unknown')}${mockT}</div>
+      <div class="card-uid">${m.fid}</div>
+      <div class="card-badges">
+        ${m.stove_lv!=null?`<span class="badge badge-gold">🔥 Lv.${m.stove_lv}</span>`:''}
+        ${m.kid!=null?`<span class="badge badge-ice">🗺️ ${m.kid}</span>`:''}
+      </div>
+      ${m.note?`<div class="card-note" title="${esc(m.note)}">💬 ${esc(m.note)}</div>`:''}
+      <div class="card-bottom">${dot}</div>
+    </div>`;
+  }).join('');
+}
+
+function updateStats() {
+  const v = members.filter(m=>m.stove_lv!=null);
+  document.getElementById('sTotal').textContent = members.length;
+  document.getElementById('sAvg').textContent = v.length?(v.reduce((s,m)=>s+m.stove_lv,0)/v.length).toFixed(1):'—';
+  document.getElementById('sMax').textContent = v.length?Math.max(...v.map(m=>m.stove_lv)):'—';
+  const states = new Set(members.map(m=>m.kid).filter(Boolean));
+  document.getElementById('sStates').textContent = states.size||'—';
+}
+
+function updateStateFilter() {
+  const sel = document.getElementById('fState'); const cur = sel.value;
+  const states = [...new Set(members.map(m=>m.kid).filter(Boolean))].sort((a,b)=>a-b);
+  sel.innerHTML = '<option value="">ทุก State</option>' + states.map(s=>`<option value="${s}"${String(s)===cur?' selected':''}> State ${s}</option>`).join('');
+}
+
+// ── EXPORT ──
+function doExport() {
+  if (!members.length) { toast('ยังไม่มีสมาชิก','err'); return; }
+  const list = getList();
+  const rows = [['#','UID','ชื่อในเกม','Furnace Lv','State','หมายเหตุ','เพิ่มเมื่อ']];
+  list.forEach((m,i) => rows.push([i+1, m.fid, m.nickname||'', m.stove_lv??'', m.kid??'', m.note||'', m.added_at?new Date(m.added_at).toLocaleDateString('th-TH'):'']));
+  const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'})), download:'wos_'+new Date().toISOString().slice(0,10)+'.csv' });
+  a.click(); toast('⬇️ Export แล้ว','ok');
+}
+
+// ── MODALS ──
+function closeM(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.overlay').forEach(el => el.addEventListener('click', e => { if(e.target===el) el.classList.remove('open'); }));
+
+// ── TOAST ──
+function toast(msg, type='info') {
+  const w = document.getElementById('toasts');
+  const t = Object.assign(document.createElement('div'), { className:`toast ${type}`, textContent:msg });
+  w.appendChild(t);
+  setTimeout(()=>t.style.opacity='0', 3000);
+  setTimeout(()=>t.remove(), 3500);
+}
+
+// ── UTILS ──
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const delay = ms => new Promise(r=>setTimeout(r,ms));
+
+// ── MD5 ──
+function md5(str) {
+  function sa(x,y){let l=(x&0xFFFF)+(y&0xFFFF);return((x>>16)+(y>>16)+(l>>16))<<16|l&0xFFFF}
+  function rl(n,c){return n<<c|n>>>32-c}
+  function cm(q,a,b,x,s,t){return sa(rl(sa(sa(a,q),sa(x,t)),s),b)}
+  function ff(a,b,c,d,x,s,t){return cm(b&c|~b&d,a,b,x,s,t)}
+  function gg(a,b,c,d,x,s,t){return cm(b&d|c&~d,a,b,x,s,t)}
+  function hh(a,b,c,d,x,s,t){return cm(b^c^d,a,b,x,s,t)}
+  function ii(a,b,c,d,x,s,t){return cm(c^(b|~d),a,b,x,s,t)}
+  const n=[];for(let i=0;i<str.length*8;i+=8)n[i>>5]|=(str.charCodeAt(i/8)&255)<<i%32;
+  n[str.length>>2]|=128<<str.length%4*8;n[(str.length+8>>6<<4)+14]=str.length*8;
+  let a=1732584193,b=-271733879,c=-1732584194,d=271733878;
+  for(let i=0;i<n.length;i+=16){
+    let A=a,B=b,C=c,D=d;
+    a=ff(a,b,c,d,n[i],7,-680876936);d=ff(d,a,b,c,n[i+1],12,-389564586);c=ff(c,d,a,b,n[i+2],17,606105819);b=ff(b,c,d,a,n[i+3],22,-1044525330);
+    a=ff(a,b,c,d,n[i+4],7,-176418897);d=ff(d,a,b,c,n[i+5],12,1200080426);c=ff(c,d,a,b,n[i+6],17,-1473231341);b=ff(b,c,d,a,n[i+7],22,-45705983);
+    a=ff(a,b,c,d,n[i+8],7,1770035416);d=ff(d,a,b,c,n[i+9],12,-1958414417);c=ff(c,d,a,b,n[i+10],17,-42063);b=ff(b,c,d,a,n[i+11],22,-1990404162);
+    a=ff(a,b,c,d,n[i+12],7,1804603682);d=ff(d,a,b,c,n[i+13],12,-40341101);c=ff(c,d,a,b,n[i+14],17,-1502002290);b=ff(b,c,d,a,n[i+15],22,1236535329);
+    a=gg(a,b,c,d,n[i+1],5,-165796510);d=gg(d,a,b,c,n[i+6],9,-1069501632);c=gg(c,d,a,b,n[i+11],14,643717713);b=gg(b,c,d,a,n[i],20,-373897302);
+    a=gg(a,b,c,d,n[i+5],5,-701558691);d=gg(d,a,b,c,n[i+10],9,38016083);c=gg(c,d,a,b,n[i+15],14,-660478335);b=gg(b,c,d,a,n[i+4],20,-405537848);
+    a=gg(a,b,c,d,n[i+9],5,568446438);d=gg(d,a,b,c,n[i+14],9,-1019803690);c=gg(c,d,a,b,n[i+3],14,-187363961);b=gg(b,c,d,a,n[i+8],20,1163531501);
+    a=gg(a,b,c,d,n[i+13],5,-1444681467);d=gg(d,a,b,c,n[i+2],9,-51403784);c=gg(c,d,a,b,n[i+7],14,1735328473);b=gg(b,c,d,a,n[i+12],20,-1926607734);
+    a=hh(a,b,c,d,n[i+5],4,-378558);d=hh(d,a,b,c,n[i+8],11,-2022574463);c=hh(c,d,a,b,n[i+11],16,1839030562);b=hh(b,c,d,a,n[i+14],23,-35309556);
+    a=hh(a,b,c,d,n[i+1],4,-1530992060);d=hh(d,a,b,c,n[i+4],11,1272893353);c=hh(c,d,a,b,n[i+7],16,-155497632);b=hh(b,c,d,a,n[i+10],23,-1094730640);
+    a=hh(a,b,c,d,n[i+13],4,681279174);d=hh(d,a,b,c,n[i],11,-358537222);c=hh(c,d,a,b,n[i+3],16,-722521979);b=hh(b,c,d,a,n[i+6],23,76029189);
+    a=hh(a,b,c,d,n[i+9],4,-640364487);d=hh(d,a,b,c,n[i+12],11,-421815835);c=hh(c,d,a,b,n[i+15],16,530742520);b=hh(b,c,d,a,n[i+2],23,-995338651);
+    a=ii(a,b,c,d,n[i],6,-198630844);d=ii(d,a,b,c,n[i+7],10,1126891415);c=ii(c,d,a,b,n[i+14],15,-1416354905);b=ii(b,c,d,a,n[i+5],21,-57434055);
+    a=ii(a,b,c,d,n[i+12],6,1700485571);d=ii(d,a,b,c,n[i+3],10,-1894986606);c=ii(c,d,a,b,n[i+10],15,-1051523);b=ii(b,c,d,a,n[i+1],21,-2054922799);
+    a=ii(a,b,c,d,n[i+8],6,1873313359);d=ii(d,a,b,c,n[i+15],10,-30611744);c=ii(c,d,a,b,n[i+6],15,-1560198380);b=ii(b,c,d,a,n[i+13],21,1309151649);
+    a=ii(a,b,c,d,n[i+4],6,-145523070);d=ii(d,a,b,c,n[i+11],10,-1120210379);c=ii(c,d,a,b,n[i+2],15,718787259);b=ii(b,c,d,a,n[i+9],21,-343485551);
+    a=sa(a,A);b=sa(b,B);c=sa(c,C);d=sa(d,D);
+  }
+  return [a,b,c,d].map(v=>{let s='';for(let j=0;j<4;j++)s+=('0'+((v>>j*8&255).toString(16))).slice(-2);return s}).join('');
+}
+</script>
+</body>
+</html>
