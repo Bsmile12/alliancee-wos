@@ -1,876 +1,214 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>❄️ WOS ALLIANCE HQ</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Saira+Condensed:wght@300;400;600;700;800;900&family=Noto+Sans+Thai:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-:root {
-  --bg:#04060f;--bg2:#080c18;--surface:#0d1220;--surface2:#121828;--surface3:#18202e;
-  --border:#1a2236;--border2:#222e42;--border3:#2a3852;
-  --gold:#f0a830;--gold2:#ffd060;--gold3:#c07810;--gold-dim:rgba(240,168,48,.13);
-  --ice:#48c8f8;--ice2:#80dcff;--ice-dim:rgba(72,200,248,.10);
-  --purple:#a060f8;--purple-dim:rgba(160,96,248,.12);
-  --red:#f04860;--red-dim:rgba(240,72,96,.12);
-  --green:#30d880;--green-dim:rgba(48,216,128,.12);
-  --text:#c8dae8;--text2:#6a8098;--text3:#2e3e50;
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--text);font-family:'Noto Sans Thai',sans-serif;min-height:100vh;overflow-x:hidden}
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-.bg-wrap{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
-.bg-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(72,200,248,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(72,200,248,.018) 1px,transparent 1px);background-size:64px 64px}
-.bg-glow1{position:absolute;width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(72,200,248,.07) 0%,transparent 70%);top:-200px;left:-100px;animation:drift1 20s ease-in-out infinite}
-.bg-glow2{position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(240,168,48,.06) 0%,transparent 70%);bottom:-100px;right:-50px;animation:drift2 25s ease-in-out infinite}
-.bg-glow3{position:absolute;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(160,96,248,.05) 0%,transparent 70%);top:40%;left:40%;animation:drift3 18s ease-in-out infinite}
-@keyframes drift1{0%,100%{transform:translate(0,0)}50%{transform:translate(60px,40px)}}
-@keyframes drift2{0%,100%{transform:translate(0,0)}50%{transform:translate(-50px,-60px)}}
-@keyframes drift3{0%,100%{transform:translate(0,0)}33%{transform:translate(-40px,30px)}66%{transform:translate(50px,-20px)}}
-.scanline{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(72,200,248,.008) 2px,rgba(72,200,248,.008) 4px)}
+const WOS_API  = "https://wos-giftcode-api.centurygame.com/api/player";
+const SIGN_KEY = "tB87#kPtkxqOS2";
 
-.app-wrap{position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh}
+const CORS = {
+  "Access-Control-Allow-Origin":  "*",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
 
-header{position:sticky;top:0;z-index:200;background:rgba(4,6,15,.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border2);height:60px;display:flex;align-items:center;padding:0 20px;gap:16px}
-.logo-area{display:flex;align-items:center;gap:10px;flex-shrink:0}
-.logo-icon{font-size:22px;animation:spin 15s linear infinite;display:inline-block}
-@keyframes spin{to{transform:rotate(360deg)}}
-.logo-text{font-family:'Saira Condensed',sans-serif;font-size:22px;font-weight:900;color:var(--gold);letter-spacing:4px;text-transform:uppercase}
-.h-sep{width:1px;height:30px;background:var(--border2);flex-shrink:0}
-.breadcrumb{display:flex;align-items:center;gap:6px;font-family:'Saira Condensed',sans-serif;font-size:14px;color:var(--text2);flex:1;overflow:hidden}
-.bc-item{cursor:pointer;transition:color .2s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bc-item:hover{color:var(--ice)}.bc-item.active{color:var(--text)}
-.bc-sep{color:var(--text3);font-size:12px;flex-shrink:0}
-.header-actions{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0}
-
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-family:'Saira Condensed',sans-serif;font-size:14px;font-weight:600;letter-spacing:.5px;cursor:pointer;border:none;transition:all .18s;white-space:nowrap;text-transform:uppercase}
-.btn-primary{background:linear-gradient(135deg,var(--gold),var(--gold3));color:#050810;box-shadow:0 2px 16px rgba(240,168,48,.25)}
-.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 24px rgba(240,168,48,.4)}
-.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--text2)}
-.btn-ghost:hover{border-color:var(--gold);color:var(--gold)}
-.btn-ice{background:var(--ice-dim);border:1px solid rgba(72,200,248,.25);color:var(--ice)}
-.btn-ice:hover{background:rgba(72,200,248,.18)}
-.btn-sm{padding:6px 12px;font-size:12px}
-.icon-btn{width:28px;height:28px;border-radius:6px;background:var(--surface2);border:1px solid var(--border2);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:12px;transition:all .15s;vertical-align:middle}
-.icon-btn:hover{border-color:var(--gold);color:var(--gold)}
-.icon-btn.del:hover{border-color:var(--red);color:var(--red)}
-.icon-btn.ice:hover{border-color:var(--ice);color:var(--ice)}
-
-.main{flex:1;max-width:1440px;width:100%;margin:0 auto;padding:20px}
-.section-title{display:flex;align-items:center;gap:12px;margin-bottom:20px}
-.section-title h2{font-family:'Saira Condensed',sans-serif;font-size:22px;font-weight:700;color:var(--text);letter-spacing:1px;text-transform:uppercase}
-.title-line{flex:1;height:1px;background:linear-gradient(90deg,var(--border2),transparent)}
-.view{display:none}.view.active{display:block}
-
-/* Hero */
-.hero{text-align:center;padding:40px 20px 30px}
-.hero-title{font-family:'Saira Condensed',sans-serif;font-size:52px;font-weight:900;letter-spacing:6px;text-transform:uppercase;background:linear-gradient(135deg,var(--ice),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;margin-bottom:8px}
-.hero-sub{font-family:'Saira Condensed',sans-serif;font-size:16px;color:var(--text2);letter-spacing:3px;text-transform:uppercase}
-.hero-stats{display:flex;justify-content:center;gap:30px;margin-top:24px;flex-wrap:wrap}
-.hero-stat{text-align:center}
-.hs-val{font-family:'Saira Condensed',sans-serif;font-size:36px;font-weight:800;color:var(--gold);line-height:1}
-.hs-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:2px;margin-top:2px}
-.hs-sep{width:1px;height:40px;background:var(--border2);align-self:center}
-
-/* State cards */
-.states-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:20px}
-.state-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;animation:cardIn .3s ease both}
-@keyframes cardIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-.state-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 60%,rgba(72,200,248,.04));pointer-events:none;opacity:0;transition:opacity .3s}
-.state-card:hover{border-color:var(--border3);transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,.5)}
-.state-card:hover::before{opacity:1}
-.sc-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:10px}
-.sc-num{font-family:'Saira Condensed',sans-serif;font-size:42px;font-weight:900;color:var(--ice);line-height:1;letter-spacing:-1px;opacity:.9}
-.sc-name{font-family:'Saira Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px}
-.sc-tag{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px}
-.sc-actions{display:flex;gap:4px;opacity:0;transition:opacity .2s;flex-shrink:0}
-.state-card:hover .sc-actions{opacity:1}
-.sc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-top:14px;border-top:1px solid var(--border)}
-.sc-stat{text-align:center}
-.sc-sv{font-family:'Saira Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--gold);line-height:1}
-.sc-sl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
-.sc-progress{margin-top:14px}
-.prog-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:6px}
-.prog-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--ice),var(--gold));transition:width .6s ease}
-.add-state-card{background:transparent;border:1px dashed var(--border2);border-radius:14px;padding:20px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:140px;color:var(--text3)}
-.add-state-card:hover{border-color:var(--gold);color:var(--gold);background:var(--gold-dim)}
-.add-state-card .ai{font-size:28px;transition:transform .2s}
-.add-state-card:hover .ai{transform:rotate(90deg)}
-.add-state-card span{font-family:'Saira Condensed',sans-serif;font-size:14px;font-weight:600;letter-spacing:1px;text-transform:uppercase}
-
-/* Alliance cards */
-.alliances-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
-.alliance-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;animation:cardIn .3s ease both}
-.alliance-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--color,var(--gold)),transparent);opacity:.7}
-.alliance-card:hover{border-color:var(--border3);transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,.5)}
-.ac-header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
-.ac-emblem{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid var(--border2);font-family:'Saira Condensed',sans-serif;font-weight:900;font-size:16px}
-.ac-info{flex:1;overflow:hidden}
-.ac-name{font-family:'Saira Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ac-meta{font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
-.ac-actions{display:flex;gap:4px;opacity:0;transition:opacity .2s;flex-shrink:0}
-.alliance-card:hover .ac-actions{opacity:1}
-.ac-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-top:14px;border-top:1px solid var(--border)}
-.ac-stat{text-align:center}
-.ac-sv{font-family:'Saira Condensed',sans-serif;font-size:18px;font-weight:700;line-height:1}
-.ac-sl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
-
-/* Toolbar */
-.toolbar{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;align-items:center}
-.search-box{flex:1;min-width:180px;position:relative}
-.search-box input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 14px 9px 38px;color:var(--text);font-size:13px;font-family:'Noto Sans Thai',sans-serif;outline:none;transition:border-color .2s}
-.search-box input:focus{border-color:var(--gold)}
-.search-box input::placeholder{color:var(--text3)}
-.search-box .si{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3)}
-.sel{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text2);font-size:13px;font-family:'Noto Sans Thai',sans-serif;outline:none;cursor:pointer}
-.sel:focus{border-color:var(--gold)}
-
-/* Member cards */
-.members-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
-.member-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 16px 16px;position:relative;overflow:hidden;transition:all .2s;animation:cardIn .3s ease both}
-.member-card:hover{border-color:var(--border3);transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,.4)}
-.member-card[data-rank="1"]{border-color:rgba(255,200,0,.4);background:linear-gradient(160deg,rgba(255,200,0,.05),var(--surface))}
-.member-card[data-rank="1"]::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#ffd700,transparent)}
-.member-card[data-rank="2"]::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#c0c0c0,transparent)}
-.member-card[data-rank="3"]::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#cd7f32,transparent)}
-.mc-rank{position:absolute;top:10px;left:12px;font-family:'Saira Condensed',sans-serif;font-size:11px;font-weight:700;color:var(--text3)}
-.mc-rank.r1{color:#ffd700}.mc-rank.r2{color:#c0c0c0}.mc-rank.r3{color:#cd7f32}
-.mc-actions{position:absolute;top:6px;right:8px;display:flex;gap:3px;opacity:0;transition:opacity .2s}
-.member-card:hover .mc-actions{opacity:1}
-
-/* ── Avatar ── */
-.mc-avatar{
-  width:52px;height:52px;border-radius:50%;
-  border:2px solid var(--border2);
-  display:flex;align-items:center;justify-content:center;
-  margin:8px auto 10px;
-  background:var(--surface2);
-  position:relative;
-  overflow:hidden;          /* สำคัญ: ครอบรูปให้กลม */
-  flex-shrink:0;
-}
-.mc-avatar img{
-  position:absolute;inset:0;
-  width:100%;height:100%;
-  object-fit:cover;
-  border-radius:50%;
-  transition:opacity .3s;
-}
-.mc-avatar .mc-init{
-  font-family:'Saira Condensed',sans-serif;
-  font-size:20px;font-weight:700;color:var(--gold);
-  position:relative;z-index:1;
-  transition:opacity .3s;
-}
-/* เมื่อรูปโหลดสำเร็จ ซ่อน initials */
-.mc-avatar.img-ok .mc-init{ opacity:0; }
-/* rank 1 glow */
-.member-card[data-rank="1"] .mc-avatar{border-color:rgba(255,215,0,.5);box-shadow:0 0 16px rgba(255,215,0,.2)}
-
-.mc-name{text-align:center;font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px}
-.mc-uid{text-align:center;font-family:'Saira Condensed',sans-serif;font-size:11px;color:var(--text3);letter-spacing:.5px;margin-bottom:10px}
-.mc-badges{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-bottom:10px}
-.badge{display:inline-flex;align-items:center;gap:3px;border-radius:6px;padding:3px 9px;font-family:'Saira Condensed',sans-serif;font-size:12px;font-weight:600;letter-spacing:.3px}
-.badge-gold{background:var(--gold-dim);border:1px solid rgba(240,168,48,.3);color:var(--gold)}
-.badge-ice{background:var(--ice-dim);border:1px solid rgba(72,200,248,.3);color:var(--ice)}
-.mc-note{text-align:center;font-size:11px;color:var(--text2);background:var(--surface2);border-radius:5px;padding:4px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-style:italic}
-.mc-dot{position:absolute;bottom:8px;right:10px;width:6px;height:6px;border-radius:50%;background:var(--green)}
-.mc-dot.loading{background:var(--gold);animation:blink .7s infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
-
-/* Stats row */
-.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:18px}
-.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;transition:border-color .2s}
-.stat-card:hover{border-color:var(--border3)}
-.stat-icon{font-size:26px;opacity:.8;flex-shrink:0}
-.stat-info{flex:1;min-width:0}
-.stat-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:3px}
-.stat-val{font-family:'Saira Condensed',sans-serif;font-size:22px;font-weight:700;color:var(--gold);line-height:1}
-.stat-val.ice{color:var(--ice)}.stat-val.green{color:var(--green)}
-
-/* Empty */
-.empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text3)}
-.empty .ei{font-size:48px;margin-bottom:12px;opacity:.4}
-.empty h3{font-family:'Saira Condensed',sans-serif;font-size:20px;color:var(--text2);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:1px}
-.empty p{font-size:13px}
-
-/* Modals */
-.overlay{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.8);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px}
-.overlay.open{display:flex}
-.modal{background:var(--surface2);border:1px solid var(--border2);border-radius:16px;padding:28px;width:480px;max-width:100%;animation:mIn .22s ease;box-shadow:0 40px 100px rgba(0,0,0,.6);max-height:90vh;overflow-y:auto}
-@keyframes mIn{from{opacity:0;transform:scale(.94) translateY(-8px)}to{opacity:1;transform:scale(1) translateY(0)}}
-.modal-title{font-family:'Saira Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--gold);margin-bottom:20px;display:flex;align-items:center;gap:8px;letter-spacing:1px;text-transform:uppercase}
-.hint{background:rgba(72,200,248,.06);border:1px solid rgba(72,200,248,.18);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:16px}
-.field{margin-bottom:14px}
-.fl{display:block;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-family:'Saira Condensed',sans-serif;font-weight:600}
-.fi{width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:10px 14px;color:var(--text);font-size:14px;font-family:'Noto Sans Thai',sans-serif;outline:none;transition:border-color .2s}
-.fi:focus{border-color:var(--gold)}.fi::placeholder{color:var(--text3)}
-textarea.fi{min-height:100px;resize:vertical;font-family:monospace;font-size:13px}
-.mf{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
-.prog-wrap{margin:10px 0;display:none}.prog-wrap.show{display:block}
-.prog-label{font-size:12px;color:var(--text2);margin-bottom:6px;font-family:'Saira Condensed',sans-serif}
-.prog-bar-modal{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
-.prog-fill-modal{height:100%;background:linear-gradient(90deg,var(--ice),var(--gold));border-radius:2px;width:0;transition:width .3s}
-
-.color-options{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
-.color-dot{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .2s;position:relative}
-.color-dot.selected{border-color:white;transform:scale(1.2)}
-.color-dot::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:white;opacity:0;transition:opacity .2s}
-.color-dot.selected::after{opacity:1}
-.emoji-options{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
-.emoji-opt{width:32px;height:32px;border-radius:6px;cursor:pointer;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .2s;background:var(--surface)}
-.emoji-opt:hover,.emoji-opt.selected{border-color:var(--gold);background:var(--gold-dim)}
-
-/* Toasts */
-.toasts{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
-.toast{background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:10px 16px;font-size:13px;display:flex;align-items:center;gap:8px;animation:tIn .3s ease;box-shadow:0 8px 30px rgba(0,0,0,.6);max-width:320px}
-.toast.ok{border-left:3px solid var(--green)}.toast.err{border-left:3px solid var(--red)}.toast.info{border-left:3px solid var(--ice)}
-@keyframes tIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
-
-.back-btn{display:inline-flex;align-items:center;gap:6px;font-family:'Saira Condensed',sans-serif;font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;padding:6px 12px;border-radius:7px;border:1px solid var(--border);background:transparent;transition:all .2s;text-transform:uppercase;letter-spacing:.5px;margin-bottom:18px}
-.back-btn:hover{color:var(--ice);border-color:var(--ice)}
-
-@media(max-width:640px){
-  header{padding:0 12px;gap:10px}.main{padding:12px}.hero-title{font-size:34px}
-  .header-actions .btn span{display:none}.hide-sm{display:none}
-}
-</style>
-</head>
-<body>
-<div class="bg-wrap">
-  <div class="bg-grid"></div><div class="bg-glow1"></div>
-  <div class="bg-glow2"></div><div class="bg-glow3"></div>
-  <div class="scanline"></div>
-</div>
-
-<div class="app-wrap">
-<header>
-  <div class="logo-area" onclick="goHome()" style="cursor:pointer">
-    <span class="logo-icon">❄️</span>
-    <div><div class="logo-text">WOS HQ</div></div>
-  </div>
-  <div class="h-sep"></div>
-  <div class="breadcrumb" id="breadcrumb"><span class="bc-item active">🌐 All State</span></div>
-  <div class="header-actions">
-    <button class="btn btn-ice btn-sm hide-sm" onclick="refreshAllVisible()">🔄 <span>Refresh</span></button>
-    <button class="btn btn-ghost btn-sm hide-sm" onclick="doExport()">⬇️ <span>Export</span></button>
-  </div>
-</header>
-
-<main class="main">
-  <!-- HOME -->
-  <div class="view active" id="viewHome">
-    <div class="hero">
-      <div class="hero-title">Whiteout Survival</div>
-      <div class="hero-sub">Alliance Headquarters</div>
-      <div class="hero-stats">
-        <div class="hero-stat"><div class="hs-val" id="gs-states">0</div><div class="hs-label">รัฐ</div></div>
-        <div class="hs-sep"></div>
-        <div class="hero-stat"><div class="hs-val" id="gs-alliances">0</div><div class="hs-label">พันธมิตร</div></div>
-        <div class="hs-sep"></div>
-        <div class="hero-stat"><div class="hs-val" id="gs-members">0</div><div class="hs-label">สมาชิก</div></div>
-        <div class="hs-sep"></div>
-        <div class="hero-stat"><div class="hs-val" id="gs-avg">—</div><div class="hs-label">Avg Furnace</div></div>
-      </div>
-    </div>
-    <div class="section-title">
-      <h2>🗺️ รัฐทั้งหมด</h2>
-      <div class="title-line"></div>
-      <button class="btn btn-primary btn-sm" onclick="openAddState()">+ เพิ่มรัฐ</button>
-    </div>
-    <div class="states-grid" id="statesGrid"></div>
-  </div>
-
-  <!-- ALLIANCES -->
-  <div class="view" id="viewAlliances">
-    <button class="back-btn" onclick="goHome()">← กลับ</button>
-    <div class="stats-row" id="stateStats"></div>
-    <div class="section-title">
-      <h2 id="stateTitle">⚔️ พันธมิตร</h2>
-      <div class="title-line"></div>
-      <button class="btn btn-primary btn-sm" onclick="openAddAlliance()">+ เพิ่มพันธมิตร</button>
-    </div>
-    <div class="alliances-grid" id="alliancesGrid"></div>
-  </div>
-
-  <!-- MEMBERS -->
-  <div class="view" id="viewMembers">
-    <button class="back-btn" id="membersBackBtn" onclick="goBackToAlliances()">← กลับ</button>
-    <div class="stats-row" id="memberStats"></div>
-    <div class="section-title">
-      <h2 id="allianceTitle2">👥 สมาชิก</h2>
-      <div class="title-line"></div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-primary btn-sm" onclick="openAddMember()">+ เพิ่มสมาชิก</button>
-        <button class="btn btn-ghost btn-sm" onclick="openBulk()">📋 Import</button>
-      </div>
-    </div>
-    <div class="toolbar">
-      <div class="search-box">
-        <span class="si">🔍</span>
-        <input type="text" id="searchQ" placeholder="ค้นหาชื่อ, UID..." oninput="renderMembers()">
-      </div>
-      <select class="sel" id="fSort" onchange="renderMembers()">
-        <option value="furnace_desc">🔥 Furnace สูง→ต่ำ</option>
-        <option value="furnace_asc">🔥 Furnace ต่ำ→สูง</option>
-        <option value="name_asc">🔤 ชื่อ A→Z</option>
-        <option value="new_desc">🕐 เพิ่มล่าสุด</option>
-      </select>
-    </div>
-    <div class="members-grid" id="membersGrid"></div>
-  </div>
-</main>
-</div>
-
-<!-- MODALS -->
-<div class="overlay" id="mAddState">
-  <div class="modal">
-    <div class="modal-title">🗺️ เพิ่มรัฐใหม่</div>
-    <div class="field"><label class="fl">หมายเลขรัฐ</label><input type="number" class="fi" id="stateNum" placeholder="เช่น 801" min="1"></div>
-    <div class="field"><label class="fl">ชื่อรัฐ (ไม่บังคับ)</label><input type="text" class="fi" id="stateName" placeholder="เช่น Frozen Tundra"></div>
-    <div class="mf">
-      <button class="btn btn-ghost" onclick="closeM('mAddState')">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="doAddState()">✅ เพิ่มรัฐ</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="mAddAlliance">
-  <div class="modal">
-    <div class="modal-title">⚔️ เพิ่มพันธมิตร</div>
-    <div class="field"><label class="fl">ชื่อพันธมิตร</label><input type="text" class="fi" id="allianceName" placeholder="เช่น ICE WOLVES"></div>
-    <div class="field"><label class="fl">แท็ก (2-5 ตัว)</label><input type="text" class="fi" id="allianceTag" placeholder="เช่น IW" maxlength="5" oninput="this.value=this.value.toUpperCase()"></div>
-    <div class="field">
-      <label class="fl">สี</label>
-      <div class="color-options">
-        <div class="color-dot selected" style="background:#f0a830" data-color="#f0a830" onclick="selectColor(this)"></div>
-        <div class="color-dot" style="background:#48c8f8" data-color="#48c8f8" onclick="selectColor(this)"></div>
-        <div class="color-dot" style="background:#a060f8" data-color="#a060f8" onclick="selectColor(this)"></div>
-        <div class="color-dot" style="background:#f04860" data-color="#f04860" onclick="selectColor(this)"></div>
-        <div class="color-dot" style="background:#30d880" data-color="#30d880" onclick="selectColor(this)"></div>
-        <div class="color-dot" style="background:#f87830" data-color="#f87830" onclick="selectColor(this)"></div>
-        <div class="color-dot" style="background:#e060a8" data-color="#e060a8" onclick="selectColor(this)"></div>
-        <div class="color-dot" style="background:#60a8f8" data-color="#60a8f8" onclick="selectColor(this)"></div>
-      </div>
-    </div>
-    <div class="field">
-      <label class="fl">ไอคอน</label>
-      <div class="emoji-options">
-        <div class="emoji-opt selected" data-emoji="⚔️" onclick="selectEmoji(this)">⚔️</div>
-        <div class="emoji-opt" data-emoji="🐺" onclick="selectEmoji(this)">🐺</div>
-        <div class="emoji-opt" data-emoji="🦅" onclick="selectEmoji(this)">🦅</div>
-        <div class="emoji-opt" data-emoji="🐉" onclick="selectEmoji(this)">🐉</div>
-        <div class="emoji-opt" data-emoji="🔥" onclick="selectEmoji(this)">🔥</div>
-        <div class="emoji-opt" data-emoji="❄️" onclick="selectEmoji(this)">❄️</div>
-        <div class="emoji-opt" data-emoji="🌙" onclick="selectEmoji(this)">🌙</div>
-        <div class="emoji-opt" data-emoji="⚡" onclick="selectEmoji(this)">⚡</div>
-        <div class="emoji-opt" data-emoji="🏰" onclick="selectEmoji(this)">🏰</div>
-        <div class="emoji-opt" data-emoji="🦁" onclick="selectEmoji(this)">🦁</div>
-        <div class="emoji-opt" data-emoji="🐻" onclick="selectEmoji(this)">🐻</div>
-        <div class="emoji-opt" data-emoji="🦊" onclick="selectEmoji(this)">🦊</div>
-      </div>
-    </div>
-    <div class="mf">
-      <button class="btn btn-ghost" onclick="closeM('mAddAlliance')">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="doAddAlliance()">✅ เพิ่มพันธมิตร</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="mAddMember">
-  <div class="modal">
-    <div class="modal-title">➕ เพิ่มสมาชิก</div>
-    <div class="hint">💡 ใส่ <strong>UID (FID)</strong> — กดที่ Avatar มุมบนซ้ายในเกมเพื่อดู UID<br>ระบบจะดึง ชื่อ / Furnace / รูป Avatar โดยอัตโนมัติ</div>
-    <div class="field"><label class="fl">UID / FID</label><input type="number" class="fi" id="inUID" placeholder="เช่น 123456789" onkeydown="if(event.key==='Enter')doAddMember()"></div>
-    <div class="field"><label class="fl">หมายเหตุ (ไม่บังคับ)</label><input type="text" class="fi" id="inNote" placeholder="เช่น R5, เจ้าหน้าที่..." onkeydown="if(event.key==='Enter')doAddMember()"></div>
-    <div class="mf">
-      <button class="btn btn-ghost" onclick="closeM('mAddMember')">ยกเลิก</button>
-      <button class="btn btn-primary" id="addMemberBtn" onclick="doAddMember()">🔍 ดึงข้อมูล & เพิ่ม</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="mBulk">
-  <div class="modal">
-    <div class="modal-title">📋 Import หลาย UID</div>
-    <div class="hint">วาง UID หลายคน แต่ละคนแยกบรรทัด หรือคั่นด้วย comma</div>
-    <div class="field"><label class="fl">UID List</label><textarea class="fi" id="bulkIn" placeholder="123456789&#10;987654321&#10;111222333"></textarea></div>
-    <div class="prog-wrap" id="progWrap">
-      <div class="prog-label" id="progLabel">กำลังดำเนินการ...</div>
-      <div class="prog-bar-modal"><div class="prog-fill-modal" id="progFill"></div></div>
-    </div>
-    <div class="mf">
-      <button class="btn btn-ghost" onclick="closeM('mBulk')">ยกเลิก</button>
-      <button class="btn btn-primary" id="bulkBtn" onclick="doBulk()">🚀 Import ทั้งหมด</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="mNote">
-  <div class="modal">
-    <div class="modal-title">📝 แก้ไขหมายเหตุ</div>
-    <input type="hidden" id="noteFID">
-    <div class="field"><label class="fl">หมายเหตุ</label><input type="text" class="fi" id="noteVal" placeholder="เช่น R5, ไม่แอคทีฟ..." onkeydown="if(event.key==='Enter')saveNote()"></div>
-    <div class="mf">
-      <button class="btn btn-ghost" onclick="closeM('mNote')">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="saveNote()">💾 บันทึก</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="mEditAlliance">
-  <div class="modal">
-    <div class="modal-title">✏️ แก้ไขพันธมิตร</div>
-    <input type="hidden" id="editAllianceId">
-    <div class="field"><label class="fl">ชื่อพันธมิตร</label><input type="text" class="fi" id="editAllianceName"></div>
-    <div class="field"><label class="fl">แท็ก</label><input type="text" class="fi" id="editAllianceTag" maxlength="5" oninput="this.value=this.value.toUpperCase()"></div>
-    <div class="mf">
-      <button class="btn btn-ghost" onclick="closeM('mEditAlliance')">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="doEditAlliance()">💾 บันทึก</button>
-    </div>
-  </div>
-</div>
-
-<div class="toasts" id="toasts"></div>
-
-<script>
-// ══ CONFIG ══
-const SB_URL    = 'https://cmxmtinccftafzjvymve.supabase.co';
-const SB_KEY    = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNteG10aW5jY2Z0YWZ6anZ5bXZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NDQ5NjIsImV4cCI6MjA5MDEyMDk2Mn0.thvH13CUCgwc4h4_g1nkq2bcepxvzx90uguSkYsrxOc';
-const PROXY_URL = 'https://cmxmtinccftafzjvymve.supabase.co/functions/v1/wos-proxy';
-
-// ══ LEVEL FORMAT ══
-function formatLevel(n) {
-  if (n == null || n === '') return '—';
-  n = Number(n);
-  if (isNaN(n)) return '—';
-  if (n <= 30) return String(n);
-  const map = {
-    31:'30-1',32:'30-2',33:'30-3',34:'30-4',
-    35:'FC1',36:'FC1-2',37:'FC1-3',38:'FC1-4',39:'FC1-5',
-    40:'FC2',41:'FC2-2',42:'FC2-3',43:'FC2-4',44:'FC2-5',
-    45:'FC3',46:'FC3-2',47:'FC3-3',48:'FC3-4',49:'FC3-5',
-    50:'FC4',51:'FC4-2',52:'FC4-3',53:'FC4-4',54:'FC4-5',
-    55:'FC5',56:'FC5-2',57:'FC5-3',58:'FC5-4',59:'FC5-5',
-    60:'FC6',61:'FC6-2',62:'FC6-3',63:'FC6-4',64:'FC6-5',
-    65:'FC7',66:'FC7-2',67:'FC7-3',68:'FC7-4',69:'FC7-5',
-    70:'FC8'
-  };
-  return map[n] ?? 'Lv'+n;
-}
-
-// ══ STATE ══
-let sb, states=[], alliances=[], members=[];
-let currentStateId=null, currentAllianceId=null;
-let selectedColor='#f0a830', selectedEmoji='⚔️';
-
-// ══ INIT ══
-async function init() {
-  sb = supabase.createClient(SB_URL, SB_KEY);
-  await loadAll();
-  renderHome();
-}
-
-async function loadAll() {
-  const [sr,ar,mr] = await Promise.all([
-    sb.from('wos_states').select('*').order('state_num'),
-    sb.from('wos_alliances').select('*').order('name'),
-    sb.from('wos_members').select('*').order('stove_lv',{ascending:false})
-  ]);
-  states=sr.data||[]; alliances=ar.data||[]; members=mr.data||[];
-}
-
-// ══ NAV ══
-function goHome(){currentStateId=null;currentAllianceId=null;showView('viewHome');updateBreadcrumb();renderHome();}
-function openState(id){currentStateId=id;currentAllianceId=null;showView('viewAlliances');updateBreadcrumb();renderAlliances();}
-function openAlliance(id){currentAllianceId=id;showView('viewMembers');updateBreadcrumb();renderMemberStats();renderMembers();}
-function goBackToAlliances(){currentAllianceId=null;showView('viewAlliances');updateBreadcrumb();renderAlliances();}
-function showView(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById(id).classList.add('active');}
-function updateBreadcrumb(){
-  const bc=document.getElementById('breadcrumb');
-  let h=`<span class="bc-item" onclick="goHome()">🌐 All State</span>`;
-  if(currentStateId){
-    const st=states.find(s=>s.id===currentStateId);
-    h+=`<span class="bc-sep">›</span><span class="bc-item ${!currentAllianceId?'active':''}" onclick="openState(${currentStateId})">State ${st?.state_num||''}</span>`;
+function md5(str: string): string {
+  function safeAdd(x: number, y: number): number {
+    const lsw = (x & 0xffff) + (y & 0xffff);
+    return ((x >> 16) + (y >> 16) + (lsw >> 16)) << 16 | lsw & 0xffff;
   }
-  if(currentAllianceId){
-    const al=alliances.find(a=>a.id===currentAllianceId);
-    h+=`<span class="bc-sep">›</span><span class="bc-item active">${al?.name||''}</span>`;
+  function rol(n: number, c: number): number { return n << c | n >>> 32 - c; }
+  function cm(q: number, a: number, b: number, x: number, s: number, t: number) {
+    return safeAdd(rol(safeAdd(safeAdd(a, q), safeAdd(x, t)), s), b);
   }
-  bc.innerHTML=h;
-}
+  function ff(a: number, b: number, c: number, d: number, x: number, s: number, t: number) { return cm(b & c | ~b & d, a, b, x, s, t); }
+  function gg(a: number, b: number, c: number, d: number, x: number, s: number, t: number) { return cm(b & d | c & ~d, a, b, x, s, t); }
+  function hh(a: number, b: number, c: number, d: number, x: number, s: number, t: number) { return cm(b ^ c ^ d, a, b, x, s, t); }
+  function ii(a: number, b: number, c: number, d: number, x: number, s: number, t: number) { return cm(c ^ (b | ~d), a, b, x, s, t); }
 
-// ══ RENDER HOME ══
-function renderHome(){
-  const wf=members.filter(m=>m.stove_lv!=null);
-  const avg=wf.length?formatLevel(Math.round(wf.reduce((s,m)=>s+m.stove_lv,0)/wf.length)):'—';
-  document.getElementById('gs-states').textContent=states.length;
-  document.getElementById('gs-alliances').textContent=alliances.length;
-  document.getElementById('gs-members').textContent=members.length;
-  document.getElementById('gs-avg').textContent=avg;
-  const grid=document.getElementById('statesGrid');
-  if(!states.length){
-    grid.innerHTML=`<div class="empty"><div class="ei">🗺️</div><h3>ยังไม่มีรัฐ</h3><p>กด "เพิ่มรัฐ" เพื่อเริ่มต้น</p></div>
-      <div class="add-state-card" onclick="openAddState()"><div class="ai">+</div><span>เพิ่มรัฐใหม่</span></div>`;
-    return;
+  const bytes = new TextEncoder().encode(str);
+  const len8  = bytes.length * 8;
+  const padLen = Math.ceil((bytes.length + 9) / 64) * 16;
+  const n: number[] = new Array(padLen).fill(0);
+  for (let i = 0; i < bytes.length; i++) n[i >> 2] |= bytes[i] << (i % 4) * 8;
+  n[bytes.length >> 2] |= 0x80 << (bytes.length % 4) * 8;
+  n[padLen - 2] = len8 & 0xffffffff;
+  n[padLen - 1] = Math.floor(len8 / 0x100000000);
+
+  let a = 1732584193, b = -271733879, c = -1732584194, d = 271733878;
+  for (let i = 0; i < n.length; i += 16) {
+    const A = a, B = b, C = c, D = d;
+    a=ff(a,b,c,d,n[i],7,-680876936);    d=ff(d,a,b,c,n[i+1],12,-389564586);
+    c=ff(c,d,a,b,n[i+2],17,606105819);  b=ff(b,c,d,a,n[i+3],22,-1044525330);
+    a=ff(a,b,c,d,n[i+4],7,-176418897);  d=ff(d,a,b,c,n[i+5],12,1200080426);
+    c=ff(c,d,a,b,n[i+6],17,-1473231341);b=ff(b,c,d,a,n[i+7],22,-45705983);
+    a=ff(a,b,c,d,n[i+8],7,1770035416); d=ff(d,a,b,c,n[i+9],12,-1958414417);
+    c=ff(c,d,a,b,n[i+10],17,-42063);   b=ff(b,c,d,a,n[i+11],22,-1990404162);
+    a=ff(a,b,c,d,n[i+12],7,1804603682);d=ff(d,a,b,c,n[i+13],12,-40341101);
+    c=ff(c,d,a,b,n[i+14],17,-1502002290);b=ff(b,c,d,a,n[i+15],22,1236535329);
+    a=gg(a,b,c,d,n[i+1],5,-165796510); d=gg(d,a,b,c,n[i+6],9,-1069501632);
+    c=gg(c,d,a,b,n[i+11],14,643717713);b=gg(b,c,d,a,n[i],20,-373897302);
+    a=gg(a,b,c,d,n[i+5],5,-701558691); d=gg(d,a,b,c,n[i+10],9,38016083);
+    c=gg(c,d,a,b,n[i+15],14,-660478335);b=gg(b,c,d,a,n[i+4],20,-405537848);
+    a=gg(a,b,c,d,n[i+9],5,568446438);  d=gg(d,a,b,c,n[i+14],9,-1019803690);
+    c=gg(c,d,a,b,n[i+3],14,-187363961);b=gg(b,c,d,a,n[i+8],20,1163531501);
+    a=gg(a,b,c,d,n[i+13],5,-1444681467);d=gg(d,a,b,c,n[i+2],9,-51403784);
+    c=gg(c,d,a,b,n[i+7],14,1735328473);b=gg(b,c,d,a,n[i+12],20,-1926607734);
+    a=hh(a,b,c,d,n[i+5],4,-378558);    d=hh(d,a,b,c,n[i+8],11,-2022574463);
+    c=hh(c,d,a,b,n[i+11],16,1839030562);b=hh(b,c,d,a,n[i+14],23,-35309556);
+    a=hh(a,b,c,d,n[i+1],4,-1530992060);d=hh(d,a,b,c,n[i+4],11,1272893353);
+    c=hh(c,d,a,b,n[i+7],16,-155497632);b=hh(b,c,d,a,n[i+10],23,-1094730640);
+    a=hh(a,b,c,d,n[i+13],4,681279174); d=hh(d,a,b,c,n[i],11,-358537222);
+    c=hh(c,d,a,b,n[i+3],16,-722521979);b=hh(b,c,d,a,n[i+6],23,76029189);
+    a=hh(a,b,c,d,n[i+9],4,-640364487); d=hh(d,a,b,c,n[i+12],11,-421815835);
+    c=hh(c,d,a,b,n[i+15],16,530742520);b=hh(b,c,d,a,n[i+2],23,-995338651);
+    a=ii(a,b,c,d,n[i],6,-198630844);   d=ii(d,a,b,c,n[i+7],10,1126891415);
+    c=ii(c,d,a,b,n[i+14],15,-1416354905);b=ii(b,c,d,a,n[i+5],21,-57434055);
+    a=ii(a,b,c,d,n[i+12],6,1700485571);d=ii(d,a,b,c,n[i+3],10,-1894986606);
+    c=ii(c,d,a,b,n[i+10],15,-1051523); b=ii(b,c,d,a,n[i+1],21,-2054922799);
+    a=ii(a,b,c,d,n[i+8],6,1873313359); d=ii(d,a,b,c,n[i+15],10,-30611744);
+    c=ii(c,d,a,b,n[i+6],15,-1560198380);b=ii(b,c,d,a,n[i+13],21,1309151649);
+    a=ii(a,b,c,d,n[i+4],6,-145523070); d=ii(d,a,b,c,n[i+11],10,-1120210379);
+    c=ii(c,d,a,b,n[i+2],15,718787259); b=ii(b,c,d,a,n[i+9],21,-343485551);
+    a=safeAdd(a,A); b=safeAdd(b,B); c=safeAdd(c,C); d=safeAdd(d,D);
   }
-  grid.innerHTML=states.map((s,i)=>{
-    const sal=alliances.filter(a=>a.state_id===s.id);
-    const sm=members.filter(m=>sal.some(a=>a.id===m.alliance_id));
-    const swf=sm.filter(m=>m.stove_lv!=null);
-    const maxF=swf.length?Math.max(...swf.map(m=>m.stove_lv)):0;
-    const avgF=swf.length?formatLevel(Math.round(swf.reduce((s,m)=>s+m.stove_lv,0)/swf.length)):'—';
-    const pw=maxF?Math.min(100,maxF/70*100):0;
-    return `<div class="state-card" style="animation-delay:${i*.05}s" onclick="openState(${s.id})">
-      <div class="sc-header">
-        <div class="sc-num">${s.state_num}</div>
-        <div style="flex:1"><div class="sc-name">${esc(s.name||'State '+s.state_num)}</div><div class="sc-tag">${sal.length} พันธมิตร · ${sm.length} สมาชิก</div></div>
-        <div class="sc-actions" onclick="event.stopPropagation()">
-          <button class="icon-btn del" onclick="doDeleteState(${s.id})">🗑️</button>
-        </div>
-      </div>
-      <div class="sc-stats">
-        <div class="sc-stat"><div class="sc-sv">${sal.length}</div><div class="sc-sl">พันธมิตร</div></div>
-        <div class="sc-stat"><div class="sc-sv">${sm.length}</div><div class="sc-sl">สมาชิก</div></div>
-        <div class="sc-stat"><div class="sc-sv">${avgF}</div><div class="sc-sl">Avg Lv</div></div>
-      </div>
-      <div class="sc-progress">
-        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3)"><span>MAX FURNACE</span><span style="color:var(--gold)">${formatLevel(maxF)}</span></div>
-        <div class="prog-bar"><div class="prog-fill" style="width:${pw}%"></div></div>
-      </div>
-    </div>`;
-  }).join('')+`<div class="add-state-card" onclick="openAddState()"><div class="ai">+</div><span>เพิ่มรัฐใหม่</span></div>`;
+  return [a,b,c,d].map(v => {
+    let s = "";
+    for (let j = 0; j < 4; j++) s += ("0" + ((v >> j*8) & 0xff).toString(16)).slice(-2);
+    return s;
+  }).join("");
 }
 
-// ══ RENDER ALLIANCES ══
-function renderAlliances(){
-  const st=states.find(s=>s.id===currentStateId);
-  document.getElementById('stateTitle').textContent=`⚔️ State ${st?.state_num} — พันธมิตร`;
-  const sal=alliances.filter(a=>a.state_id===currentStateId);
-  const sm=members.filter(m=>sal.some(a=>a.id===m.alliance_id));
-  const swf=sm.filter(m=>m.stove_lv!=null);
-  const avg=swf.length?formatLevel(Math.round(swf.reduce((s,m)=>s+m.stove_lv,0)/swf.length)):'—';
-  const maxF=swf.length?Math.max(...swf.map(m=>m.stove_lv)):null;
-  document.getElementById('stateStats').innerHTML=`
-    <div class="stat-card"><span class="stat-icon">⚔️</span><div class="stat-info"><div class="stat-label">พันธมิตร</div><div class="stat-val">${sal.length}</div></div></div>
-    <div class="stat-card"><span class="stat-icon">👥</span><div class="stat-info"><div class="stat-label">สมาชิกทั้งหมด</div><div class="stat-val ice">${sm.length}</div></div></div>
-    <div class="stat-card"><span class="stat-icon">🔥</span><div class="stat-info"><div class="stat-label">Avg Furnace</div><div class="stat-val">${avg}</div></div></div>
-    <div class="stat-card"><span class="stat-icon">🏆</span><div class="stat-info"><div class="stat-label">Max Furnace</div><div class="stat-val green">${formatLevel(maxF)}</div></div></div>`;
-  const grid=document.getElementById('alliancesGrid');
-  if(!sal.length){grid.innerHTML=`<div class="empty"><div class="ei">⚔️</div><h3>ยังไม่มีพันธมิตร</h3><p>กด "เพิ่มพันธมิตร" เพื่อเริ่มต้น</p></div>`;return;}
-  grid.innerHTML=sal.map((a,i)=>{
-    const mems=members.filter(m=>m.alliance_id===a.id);
-    const awf=mems.filter(m=>m.stove_lv!=null);
-    const aavg=awf.length?formatLevel(Math.round(awf.reduce((s,m)=>s+m.stove_lv,0)/awf.length)):'—';
-    const amaxF=awf.length?Math.max(...awf.map(m=>m.stove_lv)):null;
-    const color=a.color||'#f0a830';
-    return `<div class="alliance-card" style="animation-delay:${i*.05}s;--color:${color}" onclick="openAlliance(${a.id})">
-      <div class="ac-header">
-        <div class="ac-emblem" style="background:${color}20;border-color:${color}40;color:${color}">${a.emoji||'⚔️'} ${a.tag||a.name.slice(0,2).toUpperCase()}</div>
-        <div class="ac-info"><div class="ac-name">${esc(a.name)}</div><div class="ac-meta">${mems.length} สมาชิก</div></div>
-        <div class="ac-actions" onclick="event.stopPropagation()">
-          <button class="icon-btn" onclick="openEditAlliance(${a.id})">✏️</button>
-          <button class="icon-btn del" onclick="doDeleteAlliance(${a.id})">🗑️</button>
-        </div>
-      </div>
-      <div class="ac-stats">
-        <div class="ac-stat"><div class="ac-sv" style="color:${color}">${mems.length}</div><div class="ac-sl">สมาชิก</div></div>
-        <div class="ac-stat"><div class="ac-sv" style="color:${color}">${aavg}</div><div class="ac-sl">Avg Lv</div></div>
-        <div class="ac-stat"><div class="ac-sv" style="color:${color}">${formatLevel(amaxF)}</div><div class="ac-sl">Max Lv</div></div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ══ RENDER MEMBERS ══
-function renderMemberStats(){
-  const al=alliances.find(a=>a.id===currentAllianceId);
-  document.getElementById('allianceTitle2').textContent=`👥 ${al?.name||''} — สมาชิก`;
-  document.getElementById('membersBackBtn').textContent=`← ${states.find(s=>s.id===currentStateId)?.state_num||''} / ${al?.name||''}`;
-  const mems=members.filter(m=>m.alliance_id===currentAllianceId);
-  const wf=mems.filter(m=>m.stove_lv!=null);
-  const avg=wf.length?formatLevel(Math.round(wf.reduce((s,m)=>s+m.stove_lv,0)/wf.length)):'—';
-  const max=wf.length?Math.max(...wf.map(m=>m.stove_lv)):null;
-  const min=wf.length?Math.min(...wf.map(m=>m.stove_lv)):null;
-  document.getElementById('memberStats').innerHTML=`
-    <div class="stat-card"><span class="stat-icon">👥</span><div class="stat-info"><div class="stat-label">สมาชิก</div><div class="stat-val">${mems.length}</div></div></div>
-    <div class="stat-card"><span class="stat-icon">🔥</span><div class="stat-info"><div class="stat-label">Avg Furnace</div><div class="stat-val">${avg}</div></div></div>
-    <div class="stat-card"><span class="stat-icon">🏆</span><div class="stat-info"><div class="stat-label">สูงสุด</div><div class="stat-val green">${formatLevel(max)}</div></div></div>
-    <div class="stat-card"><span class="stat-icon">📉</span><div class="stat-info"><div class="stat-label">ต่ำสุด</div><div class="stat-val ice">${formatLevel(min)}</div></div></div>`;
-}
-
-function renderMembers(){
-  const q=document.getElementById('searchQ').value.toLowerCase();
-  const so=document.getElementById('fSort').value;
-  let list=members.filter(m=>m.alliance_id===currentAllianceId&&(!q||(m.nickname||'').toLowerCase().includes(q)||m.fid.includes(q)));
-  list.sort((a,b)=>{
-    if(so==='furnace_desc') return (b.stove_lv||0)-(a.stove_lv||0);
-    if(so==='furnace_asc')  return (a.stove_lv||0)-(b.stove_lv||0);
-    if(so==='name_asc')     return (a.nickname||'').localeCompare(b.nickname||'');
-    if(so==='new_desc')     return new Date(b.added_at||0)-new Date(a.added_at||0);
-    return 0;
-  });
-  const grid=document.getElementById('membersGrid');
-  if(!list.length){
-    grid.innerHTML=`<div class="empty"><div class="ei">${members.filter(m=>m.alliance_id===currentAllianceId).length?'🔍':'👥'}</div><h3>ยังไม่มีสมาชิก</h3><p>กด "+ เพิ่มสมาชิก" เพื่อเริ่มต้น</p></div>`;
-    return;
+serve(async (req: Request) => {
+  // ── CORS preflight ──
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS });
   }
-  grid.innerHTML=list.map((m,i)=>{
-    const rank=i+1;
-    const rCls=rank<=3?'r'+rank:'';
-    const rLabel=rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':'#'+rank;
-    const init=(m.nickname||'?').replace(/[^\u0E00-\u0E7Fa-zA-Z0-9]/g,'').slice(0,2).toUpperCase()||'?';
-    const dot=m._loading?'<div class="mc-dot loading"></div>':'<div class="mc-dot"></div>';
 
-    // ── Avatar: แสดงรูปจริง + fallback initials ──
-    // ใช้ onload เพิ่ม class img-ok เพื่อซ่อน initials
-    // ใช้ onerror ลบ img ออกถ้าโหลดไม่ได้ (initials จะแสดงแทน)
-    const avatarHtml = m.avatar
-      ? `<img src="${esc(m.avatar)}" alt=""
-             onload="this.parentElement.classList.add('img-ok')"
-             onerror="this.remove()">`
-      : '';
+  const url = new URL(req.url);
 
-    return `<div class="member-card" data-rank="${rank<=3?rank:''}">
-      <div class="mc-rank ${rCls}">${rLabel}</div>
-      <div class="mc-actions">
-        <button class="icon-btn ice" onclick="refreshOneMember('${m.fid}')" title="Refresh">🔄</button>
-        <button class="icon-btn" onclick="openNote('${m.fid}')" title="หมายเหตุ">📝</button>
-        <button class="icon-btn del" onclick="doDeleteMember('${m.fid}')" title="ลบ">🗑️</button>
-      </div>
-      <div class="mc-avatar">${avatarHtml}<span class="mc-init">${init}</span></div>
-      <div class="mc-name">${esc(m.nickname||'Unknown')}</div>
-      <div class="mc-uid">${m.fid}</div>
-      <div class="mc-badges">
-        ${m.stove_lv!=null?`<span class="badge badge-gold">🔥 ${formatLevel(m.stove_lv)}</span>`:''}
-        ${m.kid!=null?`<span class="badge badge-ice">🗺️ ${m.kid}</span>`:''}
-      </div>
-      ${m.note?`<div class="mc-note">💬 ${esc(m.note)}</div>`:''}
-      ${dot}
-    </div>`;
-  }).join('');
-}
+  // ══════════════════════════════════════════════
+  // GET /wos-proxy/avatar?url=<encoded_image_url>
+  // Proxy รูป avatar จาก WOS server → ส่งกลับให้ browser
+  // แก้ปัญหา CORS ที่ browser โหลดรูปจาก centurygame.com โดยตรงไม่ได้
+  // ══════════════════════════════════════════════
+  if (req.method === "GET" && url.searchParams.has("url")) {
+  // ข้าม auth check สำหรับ avatar proxy (เพราะ browser โหลดรูปโดยตรง)
+  // แต่ตรวจว่า token ถูกต้อง
+  const auth = req.headers.get("Authorization") || "";
+  // allow ถ้ามี token หรือ allow public (สำหรับ img src)
+    const avatarUrl = url.searchParams.get("url")!;
 
-// ══ STATE CRUD ══
-function openAddState(){document.getElementById('mAddState').classList.add('open');setTimeout(()=>document.getElementById('stateNum').focus(),80);}
-async function doAddState(){
-  const num=parseInt(document.getElementById('stateNum').value);
-  const name=document.getElementById('stateName').value.trim();
-  if(!num||num<1){toast('กรุณาใส่หมายเลขรัฐ','err');return;}
-  if(states.find(s=>s.state_num===num)){toast('รัฐนี้มีอยู่แล้ว','err');return;}
-  const{data,error}=await sb.from('wos_states').insert({state_num:num,name:name||'State '+num}).select().single();
-  if(error){toast('บันทึกไม่สำเร็จ: '+error.message,'err');return;}
-  states.push(data);states.sort((a,b)=>a.state_num-b.state_num);
-  closeM('mAddState');document.getElementById('stateNum').value='';document.getElementById('stateName').value='';
-  renderHome();toast(`✅ เพิ่ม State ${num} แล้ว`,'ok');
-}
-async function doDeleteState(id){
-  const s=states.find(x=>x.id===id);
-  const alIds=alliances.filter(a=>a.state_id===id).map(a=>a.id);
-  if(!confirm(`ต้องการลบ State ${s?.state_num}?\nข้อมูลทั้งหมดจะถูกลบด้วย`))return;
-  if(alIds.length){await sb.from('wos_members').delete().in('alliance_id',alIds);await sb.from('wos_alliances').delete().in('id',alIds);}
-  await sb.from('wos_states').delete().eq('id',id);
-  states=states.filter(x=>x.id!==id);alliances=alliances.filter(a=>a.state_id!==id);members=members.filter(m=>!alIds.includes(m.alliance_id));
-  renderHome();toast('ลบรัฐแล้ว','ok');
-}
-
-// ══ ALLIANCE CRUD ══
-function openAddAlliance(){document.getElementById('mAddAlliance').classList.add('open');setTimeout(()=>document.getElementById('allianceName').focus(),80);}
-function selectColor(el){document.querySelectorAll('.color-dot').forEach(d=>d.classList.remove('selected'));el.classList.add('selected');selectedColor=el.dataset.color;}
-function selectEmoji(el){document.querySelectorAll('.emoji-opt').forEach(d=>d.classList.remove('selected'));el.classList.add('selected');selectedEmoji=el.dataset.emoji;}
-async function doAddAlliance(){
-  const name=document.getElementById('allianceName').value.trim();
-  const tag=document.getElementById('allianceTag').value.trim();
-  if(!name){toast('กรุณาใส่ชื่อพันธมิตร','err');return;}
-  const{data,error}=await sb.from('wos_alliances').insert({state_id:currentStateId,name,tag:tag||name.slice(0,3).toUpperCase(),color:selectedColor,emoji:selectedEmoji}).select().single();
-  if(error){toast('บันทึกไม่สำเร็จ: '+error.message,'err');return;}
-  alliances.push(data);closeM('mAddAlliance');
-  document.getElementById('allianceName').value='';document.getElementById('allianceTag').value='';
-  renderAlliances();renderHome();toast(`✅ เพิ่ม ${name} แล้ว`,'ok');
-}
-function openEditAlliance(id){
-  const a=alliances.find(x=>x.id===id);
-  document.getElementById('editAllianceId').value=id;
-  document.getElementById('editAllianceName').value=a.name;
-  document.getElementById('editAllianceTag').value=a.tag||'';
-  document.getElementById('mEditAlliance').classList.add('open');
-}
-async function doEditAlliance(){
-  const id=parseInt(document.getElementById('editAllianceId').value);
-  const name=document.getElementById('editAllianceName').value.trim();
-  const tag=document.getElementById('editAllianceTag').value.trim();
-  if(!name){toast('กรุณาใส่ชื่อ','err');return;}
-  await sb.from('wos_alliances').update({name,tag}).eq('id',id);
-  const a=alliances.find(x=>x.id===id);if(a){a.name=name;a.tag=tag;}
-  closeM('mEditAlliance');renderAlliances();toast('บันทึกแล้ว','ok');
-}
-async function doDeleteAlliance(id){
-  const a=alliances.find(x=>x.id===id);
-  if(!confirm(`ต้องการลบ "${a?.name}"?`))return;
-  await sb.from('wos_members').delete().eq('alliance_id',id);
-  await sb.from('wos_alliances').delete().eq('id',id);
-  alliances=alliances.filter(x=>x.id!==id);members=members.filter(m=>m.alliance_id!==id);
-  renderAlliances();renderHome();toast('ลบพันธมิตรแล้ว','ok');
-}
-
-// ══ FETCH PLAYER (ผ่าน proxy) ══
-async function fetchPlayer(fid){
-  try{
-    const r=await fetch(PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SB_KEY},body:JSON.stringify({fid:String(fid)})});
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    const d=await r.json();
-    if(d.code===0&&d.data) return{ok:true,data:d.data};
-    return{ok:false,msg:d.msg||'ไม่พบผู้เล่น (code: '+d.code+')'};
-  }catch(e){return{ok:false,msg:'เรียก proxy ไม่ได้: '+e.message};}
-}
-
-// avatar_proxy มาจาก Edge Function ที่อัพเดตแล้ว
-// ถ้ายังใช้ Edge Function เก่า จะ fallback ใช้ avatar ตรง (อาจโหลดไม่ได้เพราะ CORS)
-function getAvatarUrl(data){
-  return data.avatar_proxy || data.avatar || '';
-}
-
-// ══ MEMBER CRUD ══
-function openAddMember(){document.getElementById('mAddMember').classList.add('open');setTimeout(()=>document.getElementById('inUID').focus(),80);}
-async function doAddMember(){
-  const uid=document.getElementById('inUID').value.trim();
-  const note=document.getElementById('inNote').value.trim();
-  if(!uid){toast('กรุณาใส่ UID','err');return;}
-  if(members.find(m=>m.fid===uid&&m.alliance_id===currentAllianceId)){toast('UID นี้มีอยู่ในพันธมิตรแล้ว','err');return;}
-  const btn=document.getElementById('addMemberBtn');btn.textContent='⏳...';btn.disabled=true;
-  const res=await fetchPlayer(uid);
-  btn.textContent='🔍 ดึงข้อมูล & เพิ่ม';btn.disabled=false;
-  if(!res.ok){toast('❌ '+res.msg,'err');return;}
-  const d=res.data;
-  const avatarUrl=getAvatarUrl(d); // ← ใช้ proxy URL
-  const{data,error}=await sb.from('wos_members').upsert(
-    {fid:uid,alliance_id:currentAllianceId,nickname:d.nickname||'Unknown',kid:d.kid,stove_lv:d.stove_lv||0,avatar:avatarUrl,note,updated_at:new Date().toISOString()},
-    {onConflict:'fid,alliance_id'}
-  ).select().single();
-  if(error){toast('บันทึกไม่สำเร็จ: '+error.message,'err');return;}
-  members.unshift(data);closeM('mAddMember');
-  document.getElementById('inUID').value='';document.getElementById('inNote').value='';
-  renderMemberStats();renderMembers();renderHome();
-  toast(`✅ เพิ่ม ${d.nickname} (${formatLevel(d.stove_lv)}) แล้ว`,'ok');
-}
-
-function openBulk(){document.getElementById('mBulk').classList.add('open');setTimeout(()=>document.getElementById('bulkIn').focus(),80);}
-async function doBulk(){
-  const raw=document.getElementById('bulkIn').value;
-  const uids=[...new Set(raw.split(/[\n,\s]+/).map(s=>s.trim()).filter(s=>/^\d{5,}$/.test(s)))];
-  if(!uids.length){toast('ไม่พบ UID ที่ถูกต้อง','err');return;}
-  const btn=document.getElementById('bulkBtn');btn.disabled=true;
-  document.getElementById('progWrap').classList.add('show');
-  let added=0,skipped=0;
-  for(let i=0;i<uids.length;i++){
-    const uid=uids[i];
-    document.getElementById('progLabel').textContent=`ดึงข้อมูล ${i+1}/${uids.length} — UID: ${uid}`;
-    document.getElementById('progFill').style.width=`${((i+1)/uids.length)*100}%`;
-    if(members.find(m=>m.fid===uid&&m.alliance_id===currentAllianceId)){skipped++;continue;}
-    const res=await fetchPlayer(uid);
-    if(res.ok){
-      const d=res.data;
-      const avatarUrl=getAvatarUrl(d); // ← ใช้ proxy URL
-      const{data}=await sb.from('wos_members').upsert(
-        {fid:uid,alliance_id:currentAllianceId,nickname:d.nickname||'Unknown',kid:d.kid,stove_lv:d.stove_lv||0,avatar:avatarUrl,note:'',updated_at:new Date().toISOString()},
-        {onConflict:'fid,alliance_id'}
-      ).select().single();
-      if(data){members.unshift(data);added++;renderMemberStats();renderMembers();}
+    // ตรวจสอบว่าเป็น domain ที่อนุญาตเท่านั้น (ป้องกัน SSRF)
+    const allowed = ["centurygame.com", "wos-giftcode-api.centurygame.com", "akamaized.net"];
+    let isAllowed = false;
+    try {
+      const parsed = new URL(avatarUrl);
+      isAllowed = allowed.some(d => parsed.hostname === d || parsed.hostname.endsWith("." + d));
+    } catch {
+      isAllowed = false;
     }
-    await delay(650);
-  }
-  document.getElementById('progWrap').classList.remove('show');
-  btn.disabled=false;document.getElementById('bulkIn').value='';
-  closeM('mBulk');renderHome();
-  toast(`✅ เพิ่ม ${added} คน | ข้ามซ้ำ ${skipped} คน`,'ok');
-}
 
-async function refreshOneMember(fid){
-  const m=members.find(x=>x.fid===fid&&x.alliance_id===currentAllianceId);if(!m)return;
-  m._loading=true;renderMembers();
-  const res=await fetchPlayer(fid);
-  if(res.ok){
-    const avatarUrl=getAvatarUrl(res.data);
-    Object.assign(m,{nickname:res.data.nickname||m.nickname,kid:res.data.kid,stove_lv:res.data.stove_lv||m.stove_lv,avatar:avatarUrl});
-    await sb.from('wos_members').update({nickname:m.nickname,kid:m.kid,stove_lv:m.stove_lv,avatar:m.avatar,updated_at:new Date().toISOString()}).eq('fid',fid).eq('alliance_id',currentAllianceId);
-    toast(`✅ อัพเดต ${m.nickname} → ${formatLevel(m.stove_lv)}`,'ok');
-  }
-  m._loading=false;renderMemberStats();renderMembers();
-}
-
-async function refreshAllVisible(){
-  if(!currentAllianceId){toast('เข้าสู่พันธมิตรก่อน','info');return;}
-  const mems=members.filter(m=>m.alliance_id===currentAllianceId);
-  for(const m of mems){
-    const res=await fetchPlayer(m.fid);
-    if(res.ok){
-      const avatarUrl=getAvatarUrl(res.data);
-      Object.assign(m,{nickname:res.data.nickname||m.nickname,kid:res.data.kid,stove_lv:res.data.stove_lv||m.stove_lv,avatar:avatarUrl});
-      await sb.from('wos_members').update({nickname:m.nickname,kid:m.kid,stove_lv:m.stove_lv,avatar:m.avatar,updated_at:new Date().toISOString()}).eq('fid',m.fid).eq('alliance_id',m.alliance_id);
+    if (!isAllowed) {
+      return new Response(JSON.stringify({ error: "URL not allowed" }), {
+        status: 403, headers: { ...CORS, "Content-Type": "application/json" },
+      });
     }
-    renderMemberStats();renderMembers();await delay(650);
+
+    try {
+      const imgRes = await fetch(avatarUrl, {
+        headers: {
+          "Referer": "https://wos-giftcode.centurygame.com/",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        },
+      });
+
+      if (!imgRes.ok) {
+        return new Response(null, { status: 404, headers: CORS });
+      }
+
+      const contentType = imgRes.headers.get("content-type") || "image/jpeg";
+      const buffer = await imgRes.arrayBuffer();
+
+      return new Response(buffer, {
+        status: 200,
+        headers: {
+          ...CORS,
+          "Content-Type": contentType,
+          "Cache-Control": "public, max-age=86400", // cache 1 วัน
+        },
+      });
+    } catch (e) {
+      return new Response(null, { status: 502, headers: CORS });
+    }
   }
-  toast('✅ Refresh เสร็จแล้ว','ok');
-}
 
-async function doDeleteMember(fid){
-  const m=members.find(x=>x.fid===fid&&x.alliance_id===currentAllianceId);
-  if(!confirm(`ต้องการลบ "${m?.nickname||fid}"?`))return;
-  await sb.from('wos_members').delete().eq('fid',fid).eq('alliance_id',currentAllianceId);
-  members=members.filter(x=>!(x.fid===fid&&x.alliance_id===currentAllianceId));
-  renderMemberStats();renderMembers();renderHome();toast('ลบแล้ว','ok');
-}
+  // ══════════════════════════════════════════════
+  // POST /wos-proxy  → ดึงข้อมูลผู้เล่น (เดิม)
+  // ══════════════════════════════════════════════
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405, headers: { ...CORS, "Content-Type": "application/json" },
+    });
+  }
 
-// ══ NOTE ══
-function openNote(fid){
-  const m=members.find(x=>x.fid===fid&&x.alliance_id===currentAllianceId);if(!m)return;
-  document.getElementById('noteFID').value=fid;
-  document.getElementById('noteVal').value=m.note||'';
-  document.getElementById('mNote').classList.add('open');
-  setTimeout(()=>document.getElementById('noteVal').focus(),80);
-}
-async function saveNote(){
-  const fid=document.getElementById('noteFID').value;
-  const note=document.getElementById('noteVal').value.trim();
-  const m=members.find(x=>x.fid===fid&&x.alliance_id===currentAllianceId);if(!m)return;
-  await sb.from('wos_members').update({note,updated_at:new Date().toISOString()}).eq('fid',fid).eq('alliance_id',currentAllianceId);
-  m.note=note;renderMembers();closeM('mNote');toast('บันทึกหมายเหตุแล้ว','ok');
-}
+  try {
+    const body = await req.json();
+    const fid  = String(body.fid || "").trim();
 
-// ══ EXPORT ══
-function doExport(){
-  const mems=currentAllianceId?members.filter(m=>m.alliance_id===currentAllianceId):members;
-  if(!mems.length){toast('ยังไม่มีข้อมูล','err');return;}
-  const rows=[['#','UID','ชื่อ','Furnace','State','พันธมิตร','หมายเหตุ']];
-  mems.forEach((m,i)=>{
-    const al=alliances.find(a=>a.id===m.alliance_id);
-    rows.push([i+1,m.fid,m.nickname||'',formatLevel(m.stove_lv),m.kid??'',al?.name||'',m.note||'']);
-  });
-  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'})),download:'wos_'+new Date().toISOString().slice(0,10)+'.csv'});
-  a.click();toast('⬇️ Export แล้ว','ok');
-}
+    if (!fid || !/^\d+$/.test(fid)) {
+      return new Response(JSON.stringify({ ok: false, msg: "fid ไม่ถูกต้อง" }), {
+        status: 400, headers: { ...CORS, "Content-Type": "application/json" },
+      });
+    }
 
-// ══ UTILS ══
-function closeM(id){document.getElementById(id).classList.remove('open')}
-document.querySelectorAll('.overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open')}));
-function toast(msg,type='info'){
-  const w=document.getElementById('toasts');
-  const t=Object.assign(document.createElement('div'),{className:`toast ${type}`,textContent:msg});
-  w.appendChild(t);setTimeout(()=>t.style.opacity='0',3200);setTimeout(()=>t.remove(),3700);
-}
-const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const delay=ms=>new Promise(r=>setTimeout(r,ms));
+    const time    = Date.now();
+    const signStr = `fid=${fid}&time=${time}${SIGN_KEY}`;
+    const sign    = md5(signStr);
+    const params  = new URLSearchParams({ fid, time: String(time), sign });
 
-// ══ BOOT ══
-init().catch(e=>{
-  document.body.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;font-family:monospace;color:#f04860;padding:20px;text-align:center">
-    <div style="font-size:48px">❌</div><div style="font-size:20px">เชื่อมต่อ Supabase ไม่ได้</div>
-    <div style="font-size:13px;color:#6a8098">Error: ${e.message}</div></div>`;
+    const wosRes = await fetch(WOS_API, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Origin":       "https://wos-giftcode.centurygame.com",
+        "Referer":      "https://wos-giftcode.centurygame.com/",
+        "User-Agent":   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+      },
+      body: params.toString(),
+    });
+
+    const text = await wosRes.text();
+    let data: Record<string, unknown>;
+
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return new Response(
+        JSON.stringify({ ok: false, msg: "WOS API parse error: " + text }),
+        { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── แนบ proxy URL ของ avatar กลับไปด้วย ──
+    // เพื่อให้ HTML ใช้ URL ผ่าน proxy แทน URL ตรงจาก centurygame.com
+    if (
+      data.code === 0 &&
+      data.data &&
+      typeof data.data === "object" &&
+      (data.data as Record<string, unknown>).avatar_image
+    ) {
+      const rawAvatar = (data.data as Record<string, unknown>).avatar_image as string;
+      const proxyBase = "https://cmxmtinccftafzjvymve.supabase.co/functions/v1/wos-proxy";
+      (data.data as Record<string, unknown>).avatar_proxy =
+        `${proxyBase}?url=${encodeURIComponent(rawAvatar)}`;
+    }
+
+    return new Response(JSON.stringify(data), {
+      status: 200, headers: { ...CORS, "Content-Type": "application/json" },
+    });
+
+  } catch (err) {
+    return new Response(
+      JSON.stringify({ ok: false, msg: "Server error: " + (err as Error).message }),
+      { status: 500, headers: { ...CORS, "Content-Type": "application/json" } }
+    );
+  }
 });
-</script>
-</body>
-</html>
