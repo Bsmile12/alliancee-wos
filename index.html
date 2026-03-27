@@ -199,16 +199,24 @@ CREATE POLICY "allow_all" ON members
     </div>
 
     <div class="setup-step">
-      <div class="step-title"><span class="step-num">2</span> ใส่ข้อมูล Project ของคุณ</div>
+      <div class="step-title"><span class="step-num">2</span> Deploy Edge Function (proxy สำหรับดึงข้อมูลจริง)</div>
+      <div class="setup-code"># ติดตั้ง Supabase CLI แล้วรันคำสั่งนี้ในโฟลเดอร์โปรเจกต์
+supabase functions deploy wos-proxy --no-verify-jwt</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:6px">📁 ไฟล์ <strong style="color:var(--ice)">index.ts</strong> อยู่ใน <strong style="color:var(--ice)">supabase/functions/wos-proxy/</strong> (แนบมาพร้อมกัน)</div>
+    </div>
+
+    <div class="setup-step">
+      <div class="step-title"><span class="step-num">3</span> ใส่ข้อมูล Project ของคุณ</div>
       <input class="setup-input" id="sbUrl" placeholder="Project URL  เช่น https://abcxyz.supabase.co">
       <input class="setup-input" id="sbKey" placeholder="anon / public Key">
+      <input class="setup-input" id="proxyUrl" placeholder="Edge Function URL  เช่น https://abcxyz.supabase.co/functions/v1/wos-proxy">
       <input class="setup-input" id="sbName" placeholder="ชื่อพันธมิตร (ไม่บังคับ)  เช่น ICE WOLVES" style="margin-bottom:0">
     </div>
 
     <button class="btn-setup" onclick="doSetup()">🔗 เชื่อมต่อ & เริ่มใช้งาน</button>
     <div class="setup-err" id="setupErr"></div>
     <div class="setup-note" style="margin-top:14px">
-      วิธีสร้าง Project: <a href="https://supabase.com" target="_blank">supabase.com</a> → New Project → SQL Editor → วาง SQL ด้านบน<br>
+      Edge Function URL = <strong style="color:var(--ice)">https://[PROJECT_ID].supabase.co/functions/v1/wos-proxy</strong><br>
       ข้อมูลทั้งหมดเก็บใน database ของคุณเอง ปลอดภัย 100%
     </div>
   </div>
@@ -309,23 +317,26 @@ CREATE POLICY "allow_all" ON members
 <script>
 // ── State ──
 const CFG_KEY = 'wos_sb_v2';
-let sb = null, members = [];
+let sb = null, members = [], PROXY_URL = '';
 
 // ── Setup ──
 async function doSetup() {
-  const url  = document.getElementById('sbUrl').value.trim();
-  const key  = document.getElementById('sbKey').value.trim();
-  const name = document.getElementById('sbName').value.trim() || 'ALLIANCE';
+  const url      = document.getElementById('sbUrl').value.trim();
+  const key      = document.getElementById('sbKey').value.trim();
+  const proxyUrl = document.getElementById('proxyUrl').value.trim();
+  const name     = document.getElementById('sbName').value.trim() || 'ALLIANCE';
   if (!url || !key) { setErr('กรุณาใส่ URL และ Key'); return; }
   if (!url.startsWith('https://')) { setErr('URL ต้องขึ้นต้นด้วย https://'); return; }
+  if (!proxyUrl) { setErr('กรุณาใส่ Edge Function URL'); return; }
   try {
-    localStorage.setItem(CFG_KEY, JSON.stringify({ url, key, name }));
-    await bootApp({ url, key, name });
+    localStorage.setItem(CFG_KEY, JSON.stringify({ url, key, proxyUrl, name }));
+    await bootApp({ url, key, proxyUrl, name });
   } catch(e) { setErr('ข้อผิดพลาด: ' + e.message); }
 }
 function setErr(m) { const e=document.getElementById('setupErr'); e.textContent=m; e.style.display='block'; }
 
 async function bootApp(cfg) {
+  PROXY_URL = cfg.proxyUrl || '';
   sb = supabase.createClient(cfg.url, cfg.key);
   const { error } = await sb.from('members').select('id').limit(1);
   if (error) { setErr('❌ เชื่อมต่อไม่ได้: ' + error.message); return; }
@@ -371,27 +382,20 @@ async function dbDelete(fid) {
   if (error) throw error;
 }
 
-// ── WOS API ──
+// ── WOS API (ผ่าน Supabase Edge Function proxy) ──
 async function fetchPlayer(fid) {
-  const time = Math.floor(Date.now() / 1000);
-  const sign = md5(`fid=${fid}&time=${time}tGy1c9gCkBr6f27`);
   try {
-    const r = await fetch('https://wos-giftcode-api.centurygame.com/api/player', {
+    const r = await fetch(PROXY_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ fid: String(fid), time: String(time), sign }).toString(),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fid: String(fid) }),
     });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json();
     if (d.code === 0 && d.data) return { ok: true, data: d.data };
-    return { ok: false, msg: d.msg || 'ไม่พบผู้เล่น' };
-  } catch {
-    // CORS fallback — mock
-    return { ok: true, _mock: true, data: {
-      fid: String(fid),
-      nickname: 'Player_' + String(fid).slice(-4),
-      kid: 100 + (parseInt(fid) % 800),
-      stove_lv: 20 + (parseInt(fid) % 15),
-    }};
+    return { ok: false, msg: d.msg || 'ไม่พบผู้เล่น (code: ' + d.code + ')' };
+  } catch(e) {
+    return { ok: false, msg: 'เรียก proxy ไม่ได้: ' + e.message };
   }
 }
 
